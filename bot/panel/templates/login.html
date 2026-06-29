@@ -4,13 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Login · Telegram Bot Studio</title>
+  <link rel="icon" type="image/png" href="/static/telegram-bot-studio.png">
+  <link rel="apple-touch-icon" href="/static/telegram-bot-studio.png">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <div class="login-wrap">
     <div class="card">
-      <h2 style="margin-top:0">Telegram Bot Studio</h2>
-      <p class="muted">Easily manage your bot</p>
+      <div class="login-brand">
+        <img src="/static/telegram-bot-studio.png" alt="Telegram Bot Studio">
+        <div><h2>Telegram Bot Studio</h2><p class="muted">Easily manage your bot</p></div>
+      </div>
       {% if error %}<div class="errors">{{ error }}</div>{% endif %}
       <form method="post" action="/login">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

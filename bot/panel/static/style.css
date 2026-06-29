@@ -56,13 +56,10 @@ a { color: var(--primary); text-decoration: none; }
   width: 38px;
   height: 38px;
   flex: 0 0 38px;
-  display: grid;
-  place-items: center;
+  display: block;
+  object-fit: cover;
   border-radius: 12px;
-  color: #fff;
-  font-size: 18px;
-  font-weight: 800;
-  background: linear-gradient(145deg, #67c9f3, #229ed9);
+  background: #062c42;
   box-shadow: 0 8px 22px rgba(0, 87, 146, .25);
 }
 .brand strong, .brand small { display: block; }
@@ -331,6 +328,8 @@ textarea { min-height: 120px; resize: vertical; line-height: 1.55; }
 .phone-preview { overflow: hidden; border: 5px solid #1a2030; border-radius: 21px; background: #dfe9f0; box-shadow: var(--shadow); }
 .phone-head { display: flex; align-items: center; gap: 9px; padding: 12px 14px; color: #fff; background: #527da3; }
 .phone-head .avatar { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 50%; background: var(--primary); font-size: 11px; font-weight: 700; }
+.phone-head .avatar { overflow: hidden; }
+.phone-head .avatar img { width: 100%; height: 100%; display: block; object-fit: cover; }
 .phone-head strong, .phone-head small { display: block; }
 .phone-head strong { font-size: 10px; }
 .phone-head small { color: #d6e2ed; font-size: 8px; }
@@ -382,6 +381,10 @@ form.inline { display: inline; }
 .login-wrap .card { padding: 28px; box-shadow: var(--shadow); }
 .login-wrap h2 { letter-spacing: -.02em; }
 .login-wrap label { margin-top: 15px; }
+.login-brand { display: flex; align-items: center; gap: 13px; margin-bottom: 20px; }
+.login-brand img { width: 48px; height: 48px; flex: 0 0 48px; display: block; border-radius: 14px; object-fit: cover; box-shadow: 0 7px 18px rgba(0, 88, 140, .18); }
+.login-brand h2, .login-brand p { margin: 0; }
+.login-brand p { margin-top: 3px; }
 
 .command-compose-grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 18px; align-items: stretch; }
 .command-compose-grid .form-section { min-height: 100%; }
