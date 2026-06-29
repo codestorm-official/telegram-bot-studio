@@ -3,6 +3,7 @@
 import logging
 
 from telegram import ReplyKeyboardMarkup, Update
+from telegram.error import Conflict, NetworkError, TimedOut
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
 from bot import cache, db
@@ -144,7 +145,16 @@ async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.exception("Error while processing update: %s", update, exc_info=context.error)
+    error = context.error
+
+    # Transient polling/network errors (e.g. a brief 409 Conflict during a
+    # Railway redeploy when two instances overlap) are self-healing, so log them
+    # as warnings without a traceback instead of alarming-looking errors.
+    if isinstance(error, (Conflict, NetworkError, TimedOut)):
+        logger.warning("Transient Telegram error: %s", error)
+        return
+
+    logger.exception("Error while processing update: %s", update, exc_info=error)
 
     if isinstance(update, Update) and update.effective_message:
         await update.effective_message.reply_text(
