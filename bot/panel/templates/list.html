@@ -48,7 +48,13 @@
 
   {% if audit_items %}
   <section class="card audit-card">
-    <div class="section-heading"><div><span class="eyebrow">Activity</span><h2>Recent changes</h2></div></div>
+    <div class="section-heading">
+      <div><span class="eyebrow">Activity</span><h2>Recent changes</h2></div>
+      <form method="post" action="/activity/clear" onsubmit="return confirm('Clear all activity history? This cannot be undone.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-danger btn-sm" type="submit">Clear activity</button>
+      </form>
+    </div>
     <div class="audit-list">
       {% for item in audit_items %}
       <div><span class="audit-dot"></span><p><strong>{{ item.actor }}</strong> {{ item.action }} {{ item.entity_type }} <b>{{ item.entity_name }}</b><small>{{ item.created_at.strftime("%d %b %Y, %H:%M") }}</small></p></div>

@@ -3,29 +3,83 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#168ACD">
   <title>Login · Telegram Bot Studio</title>
   <link rel="icon" type="image/svg+xml" href="/static/telegram-bot-studio.svg">
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
-  <div class="login-wrap">
-    <div class="card">
-      <div class="login-brand">
+<body class="login-page">
+  <main class="login-shell">
+    <section class="login-visual">
+      <div class="login-glow glow-one"></div>
+      <div class="login-glow glow-two"></div>
+      <div class="login-brand-lockup">
         <img src="/static/telegram-bot-studio.svg" alt="Telegram Bot Studio">
-        <div><h2>Telegram Bot Studio</h2><p class="muted">Easily manage your bot</p></div>
+        <span>Telegram Bot Studio</span>
       </div>
-      {% if error %}<div class="errors">{{ error }}</div>{% endif %}
-      <form method="post" action="/login">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <label for="username">Username</label>
-        <input type="text" id="username" name="username" autocomplete="username" autofocus>
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" autocomplete="current-password">
-        <div style="margin-top:18px">
-          <button class="btn btn-primary" type="submit" style="width:100%">Sign in</button>
+
+      <div class="login-message">
+        <span class="login-kicker">Your bot, under control</span>
+        <h1>Easily manage<br>your bot.</h1>
+        <p>Create commands, arrange buttons, and update Telegram responses from one focused workspace.</p>
+        <div class="login-features">
+          <span><i>✓</i> Command management</span>
+          <span><i>✓</i> Button builder</span>
+          <span><i>✓</i> Instant updates</span>
         </div>
-      </form>
-    </div>
-  </div>
+      </div>
+
+      <div class="login-preview" aria-hidden="true">
+        <div class="preview-top"><i></i><i></i><i></i><span>Bot workspace</span></div>
+        <div class="preview-body">
+          <div class="preview-side"></div>
+          <div class="preview-content">
+            <b></b><b></b>
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
+
+      <small class="login-copyright">Secure administration for your Telegram experience.</small>
+    </section>
+
+    <section class="login-form-side">
+      <div class="login-form-wrap">
+        <div class="login-mobile-brand">
+          <img src="/static/telegram-bot-studio.svg" alt="">
+          <strong>Telegram Bot Studio</strong>
+        </div>
+        <span class="eyebrow">Welcome back</span>
+        <h2>Sign in to your studio</h2>
+        <p class="login-intro">Enter your administrator credentials to continue.</p>
+
+        {% if error %}<div class="errors login-error">{{ error }}</div>{% endif %}
+
+        <form method="post" action="/login">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="field">
+            <label for="username">Username</label>
+            <div class="login-input">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+              <input type="text" id="username" name="username" autocomplete="username" placeholder="Enter your username" autofocus required>
+            </div>
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <div class="login-input">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+              <input type="password" id="password" name="password" autocomplete="current-password" placeholder="Enter your password" required>
+              <button class="password-toggle" type="button" aria-label="Show password" onclick="const field=document.querySelector('#password');field.type=field.type==='password'?'text':'password';this.classList.toggle('visible')">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+              </button>
+            </div>
+          </div>
+          <button class="btn btn-primary login-submit" type="submit">Sign in <span>→</span></button>
+        </form>
+
+        <p class="login-security"><span>◆</span> Protected session · CSRF secured · Rate limited</p>
+      </div>
+    </section>
+  </main>
 </body>
 </html>

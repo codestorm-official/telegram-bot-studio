@@ -227,6 +227,16 @@ def create_app(application, settings) -> FastAPI:
             },
         )
 
+    @app.post("/activity/clear", dependencies=[Depends(login_required)])
+    async def clear_activity(request: Request, csrf_token: str = Form("")):
+        verify_csrf(request, csrf_token)
+        deleted = await db.clear_audit_log(_get_pool(request))
+        _flash(
+            request,
+            f"Activity history cleared ({deleted} entr{'y' if deleted == 1 else 'ies'} removed).",
+        )
+        return RedirectResponse("/", status_code=303)
+
     @app.get(
         "/commands", response_class=HTMLResponse, dependencies=[Depends(login_required)]
     )

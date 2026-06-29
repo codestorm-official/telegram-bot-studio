@@ -413,3 +413,8 @@ async def list_audit_log(pool: asyncpg.Pool, *, limit: int = 20) -> list[dict]:
         "SELECT * FROM audit_log ORDER BY created_at DESC LIMIT $1;", limit
     )
     return [dict(row) for row in rows]
+
+
+async def clear_audit_log(pool: asyncpg.Pool) -> int:
+    result = await pool.execute("DELETE FROM audit_log;")
+    return int(result.rsplit(" ", 1)[-1])
