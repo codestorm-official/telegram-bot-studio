@@ -6,6 +6,15 @@ on:
       - main
     tags:
       - "v*.*.*"
+    paths:
+      - "bot/**"
+      - "migrations/**"
+      - "Dockerfile"
+      - "start.sh"
+      - "requirements.txt"
+      - "alembic.ini"
+      - ".dockerignore"
+      - ".github/workflows/docker-publish.yml"
   workflow_dispatch:
 
 permissions:

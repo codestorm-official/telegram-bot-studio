@@ -1,6 +1,6 @@
 # Telegram Bot Studio
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/python-telegram-bot?referralCode=asepsp&utm_medium=integration&utm_source=template&utm_campaign=generic)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/telegram-bot-studio?referralCode=asepsp&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 An open-source Telegram bot and web studio built with
 [`python-telegram-bot`](https://python-telegram-bot.org/), FastAPI, PostgreSQL,
