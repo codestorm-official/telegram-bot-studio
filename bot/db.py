@@ -212,6 +212,23 @@ async def delete_command(pool: asyncpg.Pool, command_id: int) -> bool:
     return result.endswith("1")
 
 
+async def update_command_keyboard(
+    pool: asyncpg.Pool, command_id: int, keyboard: list | None
+) -> dict | None:
+    """Replace only a command's response-button layout."""
+    row = await pool.fetchrow(
+        f"""
+        UPDATE commands
+        SET keyboard = $2, updated_at = now()
+        WHERE id = $1
+        RETURNING {COMMAND_COLUMNS};
+        """,
+        command_id,
+        json.dumps(keyboard) if keyboard else None,
+    )
+    return _command_to_dict(row) if row is not None else None
+
+
 # --- Main reply-keyboard buttons --------------------------------------------
 
 

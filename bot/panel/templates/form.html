@@ -5,208 +5,81 @@
     <div>
       <a class="back-link" href="/">← Back to commands</a>
       <h1>{{ title }}</h1>
-      <p>Configure what users see and what your bot sends back.</p>
+      <p>Create the command and its reply here. Response buttons are managed separately.</p>
     </div>
     <span class="save-state"><i></i> Changes apply instantly</span>
   </section>
 
   {% if errors %}
-  <div class="errors" role="alert">
-    <strong>Please fix the following</strong>
-    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
-  </div>
+  <div class="errors" role="alert"><strong>Please fix the following</strong><ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul></div>
   {% endif %}
 
   <form method="post" action="{{ action }}" id="command-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <nav class="wizard-nav" aria-label="Command setup">
-      <button type="button" class="wizard-tab active" data-go-step="1"><span>1</span><b>Command</b><small>Identity</small></button>
-      <i></i>
-      <button type="button" class="wizard-tab" data-go-step="2"><span>2</span><b>Reply</b><small>Content</small></button>
-      <i></i>
-      <button type="button" class="wizard-tab" data-go-step="3"><span>3</span><b>Buttons</b><small>Optional</small></button>
-      <i></i>
-      <button type="button" class="wizard-tab" data-go-step="4"><span>4</span><b>Publish</b><small>Visibility</small></button>
-    </nav>
-    <div class="editor-layout">
-      <div class="editor-main">
-        <section class="card form-section wizard-panel active" data-step="1" id="command">
-          <div class="form-section-title"><span>01</span><div><h2>Command details</h2><p>Name the action and explain it to your users.</p></div></div>
-          <div class="field-grid two">
-            <div class="field">
-              <label for="name">Command name <em>Required</em></label>
-              <div class="input-prefix"><span>/</span><input type="text" id="name" name="name" value="{{ values.name }}" placeholder="promo" maxlength="32" required></div>
-              <div class="hint">Lowercase letters, numbers, and underscore.</div>
-            </div>
-            <div class="field">
-              <label for="description">Button label / description</label>
-              <input type="text" id="description" name="description" value="{{ values.description }}" placeholder="See current promotions" maxlength="256">
-              <div class="hint">Used in Telegram's command list and inline button.</div>
-            </div>
-          </div>
-        </section>
-
-        <section class="card form-section wizard-panel" data-step="2" id="reply">
-          <div class="form-section-title"><span>02</span><div><h2>Bot response</h2><p>Choose the content sent when this command is opened.</p></div></div>
-          <div class="response-types" role="radiogroup" aria-label="Response type">
-            {% for t in reply_types %}
-            <label class="response-option">
-              <input type="radio" name="reply_type" value="{{ t }}" {% if values.reply_type == t %}checked{% endif %}>
-              <span class="response-option-body"><b>{% if t == 'text' %}Aa{% elif t == 'photo' %}▧{% else %}▤{% endif %}</b><span><strong>{{ t|title }}</strong><small>{% if t == 'text' %}A simple message{% elif t == 'photo' %}Image with caption{% else %}File with caption{% endif %}</small></span></span>
-            </label>
-            {% endfor %}
-          </div>
-
-          <div class="field">
-            <label for="reply_text">Message or caption <em>Required for text</em></label>
-            <textarea id="reply_text" name="reply_text" placeholder="Write the message your users will receive...">{{ values.reply_text }}</textarea>
-            <div class="field-meta"><span>Telegram formatting can be added later.</span><span id="message-count">0 characters</span></div>
-          </div>
-
-          <div class="field media-field">
-            <label for="media_url">Media URL or Telegram file_id</label>
-            <div class="input-prefix"><span>↗</span><input type="text" id="media_url" name="media_url" value="{{ values.media_url }}" placeholder="https://example.com/image.png"></div>
-            <div class="hint">Required only for photo and document responses.</div>
-          </div>
-        </section>
-
-        <section class="card form-section wizard-panel" data-step="3" id="response-buttons">
-          <div class="form-section-title"><span>03</span><div><h2>Response buttons</h2><p>Build a reply menu displayed with this response.</p></div></div>
-          <div class="field">
-            <label for="keyboard">Button layout <span class="optional">Optional</span></label>
-            <textarea id="keyboard" name="keyboard" class="keyboard-input" placeholder="Products, Pricing&#10;Contact us">{{ keyboard_text }}</textarea>
-            <div class="syntax-help">
-              <span><b>New line</b> creates a new row</span>
-              <span><b>Comma</b> adds another button in the same row</span>
-            </div>
-          </div>
-        </section>
-
-        <section class="card form-section wizard-panel" data-step="4" id="visibility">
-          <div class="form-section-title"><span>04</span><div><h2>Publish & menu</h2><p>Control availability and discovery in the bot.</p></div></div>
+    <div class="command-compose-grid">
+      <section class="card form-section">
+        <div class="form-section-title"><span>⌘</span><div><h2>Command</h2><p>Define how users discover this action.</p></div></div>
+        <div class="field">
+          <label for="name">Command name <em>Required</em></label>
+          <div class="input-prefix"><span>/</span><input type="text" id="name" name="name" value="{{ values.name }}" placeholder="promo" maxlength="32" required></div>
+          <div class="hint">Lowercase letters, numbers, and underscore only.</div>
+        </div>
+        <div class="field">
+          <label for="description">Label / description</label>
+          <input type="text" id="description" name="description" value="{{ values.description }}" placeholder="See current promotions" maxlength="256">
+          <div class="hint">Shown in Telegram's command and inline menus.</div>
+        </div>
+        <div class="settings-box">
           <label class="toggle-row">
-            <span><strong>Command enabled</strong><small>Users can run this command immediately.</small></span>
+            <span><strong>Command enabled</strong><small>Users can run this command.</small></span>
             <span class="switch"><input type="checkbox" id="enabled" name="enabled" {% if values.enabled %}checked{% endif %}><i></i></span>
           </label>
           <label class="toggle-row">
-            <span><strong>Show as inline menu button</strong><small>Display this command after /start and inside /help.</small></span>
+            <span><strong>Show in inline menu</strong><small>Display after /start and inside /help.</small></span>
             <span class="switch"><input type="checkbox" id="show_in_menu" name="show_in_menu" {% if values.show_in_menu %}checked{% endif %}><i></i></span>
           </label>
-        </section>
-      </div>
-
-      <aside class="preview-column">
-        <div class="preview-sticky">
-          <div class="preview-label"><span>Live preview</span><small>Telegram</small></div>
-          <div class="phone-preview">
-            <div class="phone-head"><span class="avatar">B</span><div><strong>Your Bot</strong><small>bot</small></div><i></i></div>
-            <div class="chat-area">
-              <div class="chat-date">Today</div>
-              <div class="chat-bubble">
-                <span id="preview-text">{{ values.reply_text or "Your response will appear here." }}</span>
-                <small>12:00 ✓✓</small>
-              </div>
-              <div id="preview-keyboard" class="preview-keyboard"></div>
-              <div id="preview-menu" class="preview-menu {% if not values.show_in_menu %}hidden{% endif %}">
-                <button type="button" id="preview-menu-label">{{ values.description or values.name or "Menu button" }}</button>
-              </div>
-            </div>
-          </div>
-          <div class="preview-tip"><span>✦</span><p><strong>Discovery tip</strong>Clear button labels help users understand what happens before they tap.</p></div>
         </div>
-      </aside>
+      </section>
+
+      <section class="card form-section">
+        <div class="form-section-title"><span>↳</span><div><h2>Reply</h2><p>Choose what the bot sends for this command.</p></div></div>
+        <div class="response-types" role="radiogroup" aria-label="Response type">
+          {% for type in reply_types %}
+          <label class="response-option">
+            <input type="radio" name="reply_type" value="{{ type }}" {% if values.reply_type == type %}checked{% endif %}>
+            <span class="response-option-body"><b>{% if type == 'text' %}Aa{% elif type == 'photo' %}▧{% else %}▤{% endif %}</b><span><strong>{{ type|title }}</strong><small>{% if type == 'text' %}Message{% elif type == 'photo' %}Image{% else %}File{% endif %}</small></span></span>
+          </label>
+          {% endfor %}
+        </div>
+        <div class="field">
+          <label for="reply_text">Message or caption <em>Required for text</em></label>
+          <textarea id="reply_text" name="reply_text" placeholder="Write the reply users will receive...">{{ values.reply_text }}</textarea>
+          <div class="field-meta"><span>Response preview</span><span id="message-count">0 characters</span></div>
+        </div>
+        <div class="field">
+          <label for="media_url">Media URL or Telegram file_id</label>
+          <div class="input-prefix"><span>↗</span><input type="text" id="media_url" name="media_url" value="{{ values.media_url }}" placeholder="Required for photo or document"></div>
+        </div>
+      </section>
     </div>
 
-    <div class="form-actions wizard-actions">
-      <a class="btn btn-secondary wizard-cancel" href="/">Cancel</a>
-      <button class="btn btn-secondary wizard-back" type="button" hidden>← Back</button>
-      <span class="wizard-progress">Step <b>1</b> of 4</span>
-      <button class="btn btn-primary btn-large wizard-next" type="button">Continue <span>→</span></button>
-      <button class="btn btn-primary btn-large wizard-save" type="submit" hidden>Save command <span>✓</span></button>
+    <div class="card next-feature">
+      <div class="feature-icon">▦</div>
+      <div><strong>Need buttons below this reply?</strong><p>Save the command first, then select it from the Response Buttons feature—no command name typing required.</p></div>
+      <a class="btn btn-secondary" href="/response-buttons">Open Response Buttons →</a>
+    </div>
+
+    <div class="form-actions">
+      <a class="btn btn-secondary" href="/">Cancel</a>
+      <button class="btn btn-primary btn-large" type="submit">Save command <span>✓</span></button>
     </div>
   </form>
 
   <script>
-    (() => {
-      const text = document.querySelector('#reply_text');
-      const keyboard = document.querySelector('#keyboard');
-      const name = document.querySelector('#name');
-      const description = document.querySelector('#description');
-      const inMenu = document.querySelector('#show_in_menu');
-      const previewText = document.querySelector('#preview-text');
-      const previewKeyboard = document.querySelector('#preview-keyboard');
-      const previewMenu = document.querySelector('#preview-menu');
-      const previewMenuLabel = document.querySelector('#preview-menu-label');
-      const count = document.querySelector('#message-count');
-      const panels = [...document.querySelectorAll('.wizard-panel')];
-      const tabs = [...document.querySelectorAll('.wizard-tab')];
-      const back = document.querySelector('.wizard-back');
-      const next = document.querySelector('.wizard-next');
-      const save = document.querySelector('.wizard-save');
-      const progress = document.querySelector('.wizard-progress b');
-      let currentStep = 1;
-
-      function render() {
-        previewText.textContent = text.value.trim() || 'Your response will appear here.';
-        count.textContent = `${text.value.length} characters`;
-        previewKeyboard.innerHTML = '';
-        keyboard.value.split('\n').forEach(line => {
-          const labels = line.split(',').map(value => value.trim()).filter(Boolean);
-          if (!labels.length) return;
-          const row = document.createElement('div');
-          labels.forEach(label => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.textContent = label;
-            row.appendChild(button);
-          });
-          previewKeyboard.appendChild(row);
-        });
-        previewMenu.classList.toggle('hidden', !inMenu.checked);
-        previewMenuLabel.textContent = description.value.trim() || name.value.trim() || 'Menu button';
-      }
-      [text, keyboard, name, description, inMenu].forEach(element => element.addEventListener('input', render));
-
-      function showStep(step) {
-        currentStep = Math.max(1, Math.min(4, step));
-        panels.forEach(panel => panel.classList.toggle('active', Number(panel.dataset.step) === currentStep));
-        tabs.forEach(tab => {
-          const tabStep = Number(tab.dataset.goStep);
-          tab.classList.toggle('active', tabStep === currentStep);
-          tab.classList.toggle('complete', tabStep < currentStep);
-        });
-        back.hidden = currentStep === 1;
-        next.hidden = currentStep === 4;
-        save.hidden = currentStep !== 4;
-        progress.textContent = currentStep;
-        const hashes = ['', '#command', '#reply', '#response-buttons', '#visibility'];
-        history.replaceState(null, '', hashes[currentStep]);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-
-      function stepIsValid() {
-        const panel = panels.find(item => Number(item.dataset.step) === currentStep);
-        const fields = [...panel.querySelectorAll('input, textarea, select')];
-        return fields.every(field => field.reportValidity());
-      }
-
-      tabs.forEach(tab => tab.addEventListener('click', () => {
-        const target = Number(tab.dataset.goStep);
-        if (target <= currentStep || stepIsValid()) showStep(target);
-      }));
-      back.addEventListener('click', () => showStep(currentStep - 1));
-      next.addEventListener('click', () => {
-        if (stepIsValid()) showStep(currentStep + 1);
-      });
-
-      const initialSteps = {
-        '#command': 1,
-        '#reply': 2,
-        '#response-buttons': 3,
-        '#visibility': 4
-      };
-      render();
-      showStep(initialSteps[window.location.hash] || {{ initial_step|default(1) }});
-    })();
+    const reply = document.querySelector('#reply_text');
+    const count = document.querySelector('#message-count');
+    const updateCount = () => count.textContent = `${reply.value.length} characters`;
+    reply.addEventListener('input', updateCount);
+    updateCount();
   </script>
 {% endblock %}

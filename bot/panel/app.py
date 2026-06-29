@@ -50,23 +50,9 @@ async def _refresh(request: Request) -> None:
         logger.exception("Failed to refresh Telegram command menu.")
 
 
-def _parse_keyboard(raw: str) -> list | None:
-    """Parse a textarea into a keyboard layout: one row per line, commas split columns."""
-    rows = []
-    for line in raw.splitlines():
-        buttons = [b.strip() for b in line.split(",") if b.strip()]
-        if buttons:
-            rows.append(buttons)
-    return rows or None
-
-
-def _keyboard_to_text(keyboard: list | None) -> str:
-    if not keyboard:
-        return ""
-    return "\n".join(", ".join(row) for row in keyboard)
-
-
-def _validate(form: dict) -> tuple[dict, list[str]]:
+def _validate(
+    form: dict, *, existing_keyboard: list | None = None
+) -> tuple[dict, list[str]]:
     """Validate and normalise submitted command fields. Returns (values, errors)."""
     errors: list[str] = []
     name = (form.get("name") or "").strip().lstrip("/").lower()
@@ -74,7 +60,6 @@ def _validate(form: dict) -> tuple[dict, list[str]]:
     reply_type = (form.get("reply_type") or "text").strip()
     reply_text = (form.get("reply_text") or "").strip()
     media_url = (form.get("media_url") or "").strip()
-    keyboard = _parse_keyboard(form.get("keyboard") or "")
     enabled = form.get("enabled") == "on"
     show_in_menu = form.get("show_in_menu") == "on"
 
@@ -102,7 +87,7 @@ def _validate(form: dict) -> tuple[dict, list[str]]:
         "reply_type": reply_type,
         "reply_text": reply_text,
         "media_url": media_url,
-        "keyboard": keyboard,
+        "keyboard": existing_keyboard,
         "enabled": enabled,
         "show_in_menu": show_in_menu,
     }
@@ -198,8 +183,6 @@ def create_app(application, settings) -> FastAPI:
                 "errors": [],
                 "values": _empty_command(),
                 "reply_types": commands.REPLY_TYPES,
-                "keyboard_text": "",
-                "initial_step": 1,
             },
         )
 
@@ -239,8 +222,11 @@ def create_app(application, settings) -> FastAPI:
     async def edit_submit(request: Request, command_id: int):
         form = dict(await request.form())
         verify_csrf(request, form.get("csrf_token"))
-        values, errors = _validate(form)
         pool = _get_pool(request)
+        existing = await db.get_command(pool, command_id) if pool is not None else None
+        values, errors = _validate(
+            form, existing_keyboard=existing.get("keyboard") if existing else None
+        )
         if pool is None:
             errors.append("Database not connected.")
         if errors:
@@ -250,6 +236,98 @@ def create_app(application, settings) -> FastAPI:
         await db.update_command(pool, command_id, **values)
         await _refresh(request)
         return RedirectResponse("/", status_code=303)
+
+    @app.get(
+        "/response-buttons",
+        response_class=HTMLResponse,
+        dependencies=[Depends(login_required)],
+    )
+    async def response_buttons(request: Request, command_id: int | None = None):
+        pool = _get_pool(request)
+        command_rows = await db.list_commands(pool)
+        selected = (
+            await db.get_command(pool, command_id) if command_id is not None else None
+        )
+        return templates.TemplateResponse(
+            "response_buttons.html",
+            {
+                "request": request,
+                "commands": command_rows,
+                "selected": selected,
+                "target_commands": [
+                    {"name": name, "description": f"Built-in /{name}"}
+                    for name in BUILTIN_COMMANDS
+                ]
+                + command_rows,
+                "selected_targets": {
+                    str(label).lstrip("/")
+                    for row in (selected.get("keyboard") if selected else []) or []
+                    for label in row
+                    if str(label).startswith("/")
+                },
+                "columns": 2,
+                "errors": [],
+                "csrf_token": get_csrf_token(request),
+            },
+        )
+
+    @app.post(
+        "/response-buttons",
+        response_class=HTMLResponse,
+        dependencies=[Depends(login_required)],
+    )
+    async def response_buttons_submit(request: Request):
+        form = await request.form()
+        verify_csrf(request, form.get("csrf_token"))
+        pool = _get_pool(request)
+        try:
+            command_id = int(form.get("command_id") or "")
+        except ValueError:
+            command_id = 0
+        selected = await db.get_command(pool, command_id)
+        errors = [] if selected else ["Select a valid command from the list."]
+        clear_buttons = form.get("clear") == "1"
+        command_rows = await db.list_commands(pool)
+        target_commands = [
+            {"name": name, "description": f"Built-in /{name}"}
+            for name in BUILTIN_COMMANDS
+        ] + command_rows
+        valid_targets = {item["name"] for item in target_commands}
+        selected_targets = [
+            name for name in form.getlist("target_commands") if name in valid_targets
+        ]
+        try:
+            columns = min(3, max(1, int(form.get("columns") or 2)))
+        except ValueError:
+            columns = 2
+        if not selected_targets and not clear_buttons:
+            errors.append("Select at least one command for the response buttons.")
+        keyboard = [
+            [f"/{name}" for name in selected_targets[index : index + columns]]
+            for index in range(0, len(selected_targets), columns)
+        ]
+        if errors:
+            return templates.TemplateResponse(
+                "response_buttons.html",
+                {
+                    "request": request,
+                    "commands": command_rows,
+                    "selected": selected,
+                    "target_commands": target_commands,
+                    "selected_targets": set(selected_targets),
+                    "columns": columns,
+                    "errors": errors,
+                    "csrf_token": get_csrf_token(request),
+                },
+                status_code=400,
+            )
+        await db.update_command_keyboard(
+            pool, command_id, None if clear_buttons else keyboard
+        )
+        await _refresh(request)
+        return RedirectResponse(
+            f"/response-buttons?command_id={command_id}", status_code=303
+        )
 
     @app.post(
         "/commands/{command_id}/delete", dependencies=[Depends(login_required)]
@@ -382,15 +460,6 @@ def create_app(application, settings) -> FastAPI:
                 "errors": errors,
                 "values": values,
                 "reply_types": commands.REPLY_TYPES,
-                "keyboard_text": _keyboard_to_text(values.get("keyboard")),
-                "initial_step": (
-                    2
-                    if any(
-                        error.startswith(("Text reply", "Photo/document", "Media URL"))
-                        for error in errors
-                    )
-                    else 1
-                ),
             },
             status_code=400 if errors else 200,
         )
