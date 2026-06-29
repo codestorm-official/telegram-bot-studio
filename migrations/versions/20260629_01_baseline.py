@@ -20,7 +20,11 @@ def upgrade():
             first_name TEXT,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             last_seen TIMESTAMPTZ NOT NULL DEFAULT now()
-        );
+        )
+        """
+    )
+    op.execute(
+        """
         CREATE TABLE IF NOT EXISTS commands (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL UNIQUE,
@@ -33,7 +37,11 @@ def upgrade():
             show_in_menu BOOLEAN NOT NULL DEFAULT TRUE,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        );
+        )
+        """
+    )
+    op.execute(
+        """
         CREATE TABLE IF NOT EXISTS menu_buttons (
             id SERIAL PRIMARY KEY,
             label TEXT NOT NULL UNIQUE,
@@ -43,7 +51,11 @@ def upgrade():
             enabled BOOLEAN NOT NULL DEFAULT TRUE,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        );
+        )
+        """
+    )
+    op.execute(
+        """
         CREATE TABLE IF NOT EXISTS audit_log (
             id BIGSERIAL PRIMARY KEY,
             actor TEXT NOT NULL,
@@ -52,19 +64,19 @@ def upgrade():
             entity_name TEXT NOT NULL,
             details JSONB,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        );
+        )
+        """
+    )
+    op.execute(
+        """
         CREATE INDEX IF NOT EXISTS audit_log_created_at_idx
-            ON audit_log (created_at DESC);
+            ON audit_log (created_at DESC)
         """
     )
 
 
 def downgrade():
-    op.execute(
-        """
-        DROP TABLE IF EXISTS audit_log;
-        DROP TABLE IF EXISTS menu_buttons;
-        DROP TABLE IF EXISTS commands;
-        DROP TABLE IF EXISTS users;
-        """
-    )
+    op.execute("DROP TABLE IF EXISTS audit_log")
+    op.execute("DROP TABLE IF EXISTS menu_buttons")
+    op.execute("DROP TABLE IF EXISTS commands")
+    op.execute("DROP TABLE IF EXISTS users")
