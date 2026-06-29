@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Telegram Bot Studio</title>
+  <defs>
+    <linearGradient id="background" x1="10" y1="8" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#45BCEB"/>
+      <stop offset="1" stop-color="#168ACD"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#background)"/>
+  <path d="M14 17.5A8.5 8.5 0 0 1 22.5 9h19A8.5 8.5 0 0 1 50 17.5v19a8.5 8.5 0 0 1-8.5 8.5H29l-10.5 8v-8A8.5 8.5 0 0 1 14 37.5v-20Z" fill="#fff" fill-opacity=".16"/>
+  <path d="m17.5 29.4 29.2-11.2c1.35-.5 2.58.73 2.08 2.08L37.6 49.5c-.48 1.27-2.2 1.47-2.96.35l-6.13-9.12-8.93-5.77c-1.2-.77-1-2.54.32-3.03l19.35-7.2-15.2 9.3 7.15 4.62 4.42 6.58 8.5-22.2-24.72 9.48-1.9-3.1Z" fill="#fff"/>
+  <circle cx="49" cy="49" r="8" fill="#072F47"/>
+  <path d="M49 45v8M45 49h8" stroke="#67D5F7" stroke-width="2.5" stroke-linecap="round"/>
+</svg>
