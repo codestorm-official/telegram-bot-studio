@@ -1,8 +1,10 @@
-# Telegram Bot with python-telegram-bot
+# Telegram Bot Studio
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/python-telegram-bot?referralCode=asepsp&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
-A starter Telegram bot project built with [`python-telegram-bot`](https://python-telegram-bot.org/), environment-based configuration, Docker support, and Railway deployment setup.
+An open-source Telegram bot and web studio built with
+[`python-telegram-bot`](https://python-telegram-bot.org/), FastAPI, PostgreSQL,
+Docker, and Railway.
 
 ![Telegram Bot Demo](img/bot.png)
 
@@ -102,9 +104,12 @@ and all state-changing forms are CSRF-protected. Always use a strong
 ├── .env
 ├── .env.example
 ├── .dockerignore
+├── compose.yaml
+├── CONTRIBUTING.md
 ├── .gitignore
 ├── Dockerfile
 ├── LICENSE
+├── SECURITY.md
 ├── railway.json
 ├── README.md
 └── requirements.txt
@@ -169,9 +174,106 @@ python -m bot.main
 ## Run with Docker
 
 ```bash
-docker build -t telegram-bot .
-docker run --env-file .env telegram-bot
+docker build -t telegram-bot-studio .
+docker run --env-file .env telegram-bot-studio
 ```
+
+Run the bot and PostgreSQL together:
+
+```bash
+docker compose up --build
+```
+
+## Public Docker image
+
+Prebuilt images are published to GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/codestorm-official/telegram-bot-studio:latest
+```
+
+Available tags include `latest`, semantic release tags such as `1.0.0`, and
+immutable commit tags such as `sha-abc1234`.
+
+Bot-only mode:
+
+```bash
+docker run --rm \
+  -e BOT_TOKEN="your_bot_token" \
+  ghcr.io/codestorm-official/telegram-bot-studio:latest
+```
+
+Studio mode with an existing PostgreSQL database:
+
+```bash
+docker run --rm \
+  -p 8080:8080 \
+  -e BOT_TOKEN="your_bot_token" \
+  -e DATABASE_URL="postgresql://user:pass@host:5432/db" \
+  -e PANEL_USERNAME="admin" \
+  -e PANEL_PASSWORD="change-me" \
+  -e PANEL_SECRET_KEY="replace-with-a-random-secret" \
+  ghcr.io/codestorm-official/telegram-bot-studio:latest
+```
+
+## Deploy the GHCR image on Railway
+
+Create an image-based Railway service using:
+
+```text
+ghcr.io/codestorm-official/telegram-bot-studio:latest
+```
+
+Minimum variables for bot-only mode:
+
+```text
+BOT_TOKEN=...
+LOG_LEVEL=INFO
+```
+
+Variables for Studio mode:
+
+```text
+BOT_TOKEN=...
+DATABASE_URL=${{ Postgres.DATABASE_URL }}
+PANEL_USERNAME=admin
+PANEL_PASSWORD=...
+PANEL_SECRET_KEY=...
+LOG_LEVEL=INFO
+```
+
+Railway injects `PORT` automatically, so it does not need to be configured
+manually.
+
+> **Polling deployment:** run exactly one replica/instance. Telegram
+> `getUpdates` supports only one active consumer for a bot token. Multi-instance
+> deployments require webhook mode or queue/leader-election coordination.
+
+## Publishing releases
+
+The GitHub Actions workflow publishes to GHCR on every push to `main`, on
+manual dispatch, and for tags matching `v*.*.*`.
+
+To publish version `1.0.0`:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+After the workflow completes, verify the tags:
+
+```bash
+docker pull ghcr.io/codestorm-official/telegram-bot-studio:latest
+docker pull ghcr.io/codestorm-official/telegram-bot-studio:1.0.0
+docker image inspect ghcr.io/codestorm-official/telegram-bot-studio:1.0.0
+```
+
+The package must have public visibility in the repository or organization
+package settings before Railway can pull it without registry credentials.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and
+[SECURITY.md](SECURITY.md) for private vulnerability reporting.
 
 ## License
 
