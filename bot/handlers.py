@@ -2,9 +2,16 @@
 
 import logging
 
-from telegram import ReplyKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, Update
 from telegram.error import Conflict, NetworkError, TimedOut
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import (
+    Application,
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 
 from bot import commands, db
 
@@ -39,9 +46,33 @@ HELP_TEXT = """Available commands:
 /start - Start the bot
 /help - Show help
 /about - Show bot information
-/ping - Check bot status
+/ping - Check bot status"""
 
-Send a normal text message and the bot will echo it back."""
+DYNAMIC_CALLBACK_PREFIX = "command:"
+
+
+def _dynamic_commands_text() -> str:
+    items = commands.menu_commands()
+    if not items:
+        return ""
+    lines = [f"/{name} - {description}" for name, description in items]
+    return "\n\nAvailable menu commands:\n" + "\n".join(lines)
+
+
+def _dynamic_commands_keyboard() -> InlineKeyboardMarkup | None:
+    items = commands.menu_commands()
+    if not items:
+        return None
+
+    buttons = [
+        InlineKeyboardButton(
+            description or f"/{name}",
+            callback_data=f"{DYNAMIC_CALLBACK_PREFIX}{name}",
+        )
+        for name, description in items
+    ]
+    rows = [buttons[index : index + 2] for index in range(0, len(buttons), 2)]
+    return InlineKeyboardMarkup(rows)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -64,6 +95,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "Choose a menu button below or type /help to see the available commands.",
         reply_markup=MAIN_MENU_KEYBOARD,
     )
+    dynamic_keyboard = _dynamic_commands_keyboard()
+    if dynamic_keyboard is not None:
+        await message.reply_text("Choose a command:", reply_markup=dynamic_keyboard)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -72,7 +106,12 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if message is None:
         return
 
-    await message.reply_text(HELP_TEXT)
+    await message.reply_text(
+        HELP_TEXT
+        + _dynamic_commands_text()
+        + "\n\nSend a normal text message and the bot will echo it back.",
+        reply_markup=_dynamic_commands_keyboard(),
+    )
 
 
 async def about(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -148,6 +187,26 @@ async def dynamic_command_dispatcher(
     await message.reply_text("Unknown command. Type /help for assistance.")
 
 
+async def dynamic_command_button(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Run a panel-managed command selected from an inline button."""
+    del context
+    query = update.callback_query
+    if query is None or query.data is None:
+        return
+
+    name = query.data.removeprefix(DYNAMIC_CALLBACK_PREFIX)
+    command = commands.lookup(name)
+    if command is None:
+        await query.answer("This command is no longer available.", show_alert=True)
+        return
+
+    await query.answer()
+    if query.message is not None:
+        await commands.send(query.message, command)
+
+
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     error = context.error
 
@@ -177,6 +236,12 @@ def register_handlers(application: Application) -> None:
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("about", about))
     application.add_handler(CommandHandler("ping", ping))
+    application.add_handler(
+        CallbackQueryHandler(
+            dynamic_command_button,
+            pattern=f"^{DYNAMIC_CALLBACK_PREFIX}[a-z0-9_]{{1,32}}$",
+        )
+    )
     # Any other /command is resolved dynamically from the panel-managed registry.
     application.add_handler(MessageHandler(filters.COMMAND, dynamic_command_dispatcher))
     application.add_handler(

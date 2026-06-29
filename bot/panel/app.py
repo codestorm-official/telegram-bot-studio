@@ -172,6 +172,14 @@ def create_app(application, settings) -> FastAPI:
             {
                 "request": request,
                 "commands": items,
+                "stats": {
+                    "total": len(items),
+                    "enabled": sum(bool(item["enabled"]) for item in items),
+                    "in_menu": sum(
+                        bool(item["enabled"] and item["show_in_menu"]) for item in items
+                    ),
+                    "with_buttons": sum(bool(item["keyboard"]) for item in items),
+                },
                 "csrf_token": get_csrf_token(request),
             },
         )

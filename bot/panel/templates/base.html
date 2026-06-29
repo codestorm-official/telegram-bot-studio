@@ -3,24 +3,64 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Bot Panel UI{% endblock %}</title>
+  <meta name="theme-color" content="#0b1020">
+  <title>{% block title %}Bot Studio{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  {% block topbar %}
-  <div class="topbar">
-    <div class="brand">🤖 Bot Panel UI</div>
-    <div>
-      <a class="btn btn-sm" href="/">Commands</a>
-      <form class="inline" method="post" action="/logout">
+  {% block shell %}
+  <input class="nav-toggle" type="checkbox" id="nav-toggle">
+  <header class="mobile-bar">
+    <a class="brand brand-mobile" href="/">
+      <span class="brand-mark">B</span><span>Bot Studio</span>
+    </a>
+    <label class="menu-trigger" for="nav-toggle" aria-label="Toggle navigation">
+      <span></span><span></span><span></span>
+    </label>
+  </header>
+  <label class="nav-backdrop" for="nav-toggle" aria-hidden="true"></label>
+
+  <aside class="sidebar">
+    <a class="brand" href="/">
+      <span class="brand-mark">B</span>
+      <span><strong>Bot Studio</strong><small>Telegram control center</small></span>
+    </a>
+
+    <nav class="side-nav" aria-label="Main navigation">
+      <p class="nav-label">Workspace</p>
+      <a class="nav-item {% if request.url.path == '/' %}active{% endif %}" href="/">
+        <span class="nav-icon">⌂</span><span>Overview</span>
+      </a>
+      <a class="nav-item {% if '/commands/' in request.url.path and request.url.path != '/commands/new' %}active{% endif %}" href="/#commands">
+        <span class="nav-icon">⌘</span><span>Commands</span>
+      </a>
+      <a class="nav-item {% if request.url.path == '/commands/new' %}active{% endif %}" href="/commands/new">
+        <span class="nav-icon">＋</span><span>Add command</span>
+      </a>
+
+      <p class="nav-label">Bot experience</p>
+      <a class="nav-item" href="/#menu-buttons">
+        <span class="nav-icon">▦</span><span>Inline menu</span>
+      </a>
+      <a class="nav-item" href="/commands/new#response-buttons">
+        <span class="nav-icon">↳</span><span>Response buttons</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="bot-status"><span class="status-dot"></span><span>Bot connected</span></div>
+      <form method="post" action="/logout">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <button class="btn btn-sm" type="submit">Logout</button>
+        <button class="nav-item logout" type="submit"><span class="nav-icon">↪</span>Sign out</button>
       </form>
     </div>
-  </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="content-wrap">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
   {% endblock %}
-  <div class="container">
-    {% block content %}{% endblock %}
-  </div>
 </body>
 </html>

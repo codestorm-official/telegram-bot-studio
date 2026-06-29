@@ -1,40 +1,104 @@
 {% extends "base.html" %}
+{% block title %}Overview · Bot Studio{% endblock %}
 {% block content %}
-  <div class="row" style="justify-content: space-between; margin-bottom: 16px;">
-    <h2 style="margin:0">Commands</h2>
-    <a class="btn btn-primary" href="/commands/new">+ New command</a>
-  </div>
+  <section class="page-heading">
+    <div>
+      <span class="eyebrow">Control center</span>
+      <h1>Welcome back 👋</h1>
+      <p>Build your bot menu, publish commands, and manage every response from one place.</p>
+    </div>
+    <a class="btn btn-primary btn-large" href="/commands/new"><span>＋</span> New command</a>
+  </section>
 
-  <div class="card" style="padding:0">
-    <table>
-      <thead>
-        <tr><th>Command</th><th>Type</th><th>Menu</th><th>Status</th><th></th></tr>
-      </thead>
-      <tbody>
-        {% for c in commands %}
-        <tr>
-          <td>
-            <strong>/{{ c.name }}</strong>
-            {% if c.description %}<div class="muted">{{ c.description }}</div>{% endif %}
-          </td>
-          <td>{{ c.reply_type }}</td>
-          <td>{% if c.show_in_menu %}<span class="badge on">yes</span>{% else %}<span class="badge off">no</span>{% endif %}</td>
-          <td>{% if c.enabled %}<span class="badge on">enabled</span>{% else %}<span class="badge off">disabled</span>{% endif %}</td>
-          <td>
-            <div class="actions">
-              <a class="btn btn-sm" href="/commands/{{ c.id }}/edit">Edit</a>
+  <section class="stats-grid" aria-label="Bot statistics">
+    <article class="stat-card accent-blue">
+      <span class="stat-icon">⌘</span>
+      <div><strong>{{ stats.total }}</strong><span>Total commands</span></div>
+    </article>
+    <article class="stat-card accent-green">
+      <span class="stat-icon">✓</span>
+      <div><strong>{{ stats.enabled }}</strong><span>Active commands</span></div>
+    </article>
+    <article class="stat-card accent-purple" id="menu-buttons">
+      <span class="stat-icon">▦</span>
+      <div><strong>{{ stats.in_menu }}</strong><span>Inline menu buttons</span></div>
+    </article>
+    <article class="stat-card accent-orange">
+      <span class="stat-icon">↳</span>
+      <div><strong>{{ stats.with_buttons }}</strong><span>Response menus</span></div>
+    </article>
+  </section>
+
+  <section class="quick-grid">
+    <article class="card quick-card">
+      <span class="quick-icon blue">＋</span>
+      <div>
+        <h3>Create a command</h3>
+        <p>Add text, photos, or documents as an automated response.</p>
+        <a href="/commands/new">Create command <span>→</span></a>
+      </div>
+    </article>
+    <article class="card quick-card">
+      <span class="quick-icon purple">▦</span>
+      <div>
+        <h3>Build an inline menu</h3>
+        <p>Enable “Show as inline button” on commands users should discover.</p>
+        <a href="/commands/new#visibility">Add menu button <span>→</span></a>
+      </div>
+    </article>
+    <article class="card quick-card">
+      <span class="quick-icon orange">↳</span>
+      <div>
+        <h3>Add response buttons</h3>
+        <p>Create rows of buttons displayed below a command response.</p>
+        <a href="/commands/new#response-buttons">Add buttons <span>→</span></a>
+      </div>
+    </article>
+  </section>
+
+  <section class="card command-card" id="commands">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow">Content</span>
+        <h2>Commands</h2>
+      </div>
+      <a class="btn btn-secondary" href="/commands/new">＋ Add command</a>
+    </div>
+
+    {% if commands %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Response</th><th>Inline menu</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr>
+        </thead>
+        <tbody>
+          {% for c in commands %}
+          <tr>
+            <td data-label="Command">
+              <div class="command-name"><span class="command-icon">/</span><div><strong>{{ c.name }}</strong>{% if c.description %}<small>{{ c.description }}</small>{% endif %}</div></div>
+            </td>
+            <td data-label="Response"><span class="type-pill">{{ c.reply_type }}</span>{% if c.keyboard %}<span class="mini-note">+ buttons</span>{% endif %}</td>
+            <td data-label="Inline menu">{% if c.show_in_menu %}<span class="badge on"><i></i>Visible</span>{% else %}<span class="badge off">Hidden</span>{% endif %}</td>
+            <td data-label="Status">{% if c.enabled %}<span class="badge on"><i></i>Active</span>{% else %}<span class="badge off">Disabled</span>{% endif %}</td>
+            <td class="action-cell">
+              <a class="icon-btn" href="/commands/{{ c.id }}/edit" aria-label="Edit /{{ c.name }}">✎</a>
               <form class="inline" method="post" action="/commands/{{ c.id }}/delete"
                     onsubmit="return confirm('Delete /{{ c.name }}?');">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <button class="btn btn-sm btn-danger" type="submit">Delete</button>
+                <button class="icon-btn danger" type="submit" aria-label="Delete /{{ c.name }}">⌫</button>
               </form>
-            </div>
-          </td>
-        </tr>
-        {% else %}
-        <tr><td colspan="5" class="muted" style="padding:20px">No commands yet. Create your first one.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <span>⌘</span><h3>Your command list is empty</h3>
+      <p>Create the first command and make it visible in your bot's inline menu.</p>
+      <a class="btn btn-primary" href="/commands/new">Create first command</a>
+    </div>
+    {% endif %}
+  </section>
 {% endblock %}
