@@ -5,6 +5,8 @@ import secrets
 
 from fastapi import HTTPException, Request
 
+from bot.panel.rate_limit import LoginRateLimiter
+
 
 class AuthRedirect(Exception):
     """Raised by login_required to bounce unauthenticated users to /login."""

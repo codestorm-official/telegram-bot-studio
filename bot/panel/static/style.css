@@ -357,6 +357,24 @@ textarea { min-height: 120px; resize: vertical; line-height: 1.55; }
 .errors { margin-bottom: 16px; padding: 13px 15px; border: 1px solid #ffc9ca; border-radius: 10px; color: var(--danger); background: var(--danger-soft); font-size: 11px; }
 .errors ul { margin: 6px 0 0; padding-left: 18px; }
 .warn { margin-bottom: 16px; padding: 12px; border: 1px solid #f4cf85; border-radius: 9px; color: #976313; background: #fff9eb; }
+.toast, .info-banner { display: flex; align-items: flex-start; gap: 11px; margin-bottom: 18px; padding: 13px 15px; border: 1px solid #a9ddf4; border-radius: 11px; color: #17658a; background: #edf9fe; }
+.toast > span, .info-banner > span { width: 22px; height: 22px; flex: 0 0 22px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--primary); font-size: 10px; font-weight: 700; line-height: 1; }
+.toast strong, .toast small { display: block; }
+.toast strong { font-size: 11px; }
+.toast small, .info-banner p { margin: 3px 0 0; font-size: 9px; line-height: 1.5; }
+.toast.error { border-color: #ffc9ca; color: var(--danger); background: var(--danger-soft); }
+.toast.error > span { background: var(--danger); }
+.toast code, .info-banner code { padding: 1px 4px; border-radius: 4px; background: rgba(255,255,255,.7); font-weight: 700; }
+.drag-handle { display: inline-grid; place-items: center; width: 25px; height: 30px; color: var(--muted); cursor: grab; user-select: none; }
+tr.dragging { opacity: .45; background: var(--primary-soft); }
+.audit-card { margin-top: 18px; }
+.audit-list { padding: 6px 20px 12px; }
+.audit-list > div { display: flex; gap: 11px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+.audit-list > div:last-child { border-bottom: 0; }
+.audit-dot { width: 8px; height: 8px; flex: 0 0 8px; margin-top: 4px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 0 4px var(--primary-soft); }
+.audit-list p { margin: 0; color: var(--muted); font-size: 10px; }
+.audit-list strong, .audit-list b { color: var(--text); }
+.audit-list small { display: block; margin-top: 3px; color: #9aa2b1; font-size: 8px; }
 form.inline { display: inline; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 

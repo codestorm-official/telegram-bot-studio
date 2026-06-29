@@ -70,6 +70,9 @@ no extra service required. Use it to manage dynamic commands at runtime:
   `file_id`), each with an optional **reply keyboard**.
 - Changes apply immediately: the in-process registry and the Telegram command
   menu are refreshed on every save.
+- Reply-keyboard changes appear after the user runs `/start` again; Telegram
+  clients do not expose a remote keyboard-refresh API.
+- Schema changes are managed with Alembic and applied automatically on startup.
 
 **Enabling it:** the panel is served only when `PANEL_PASSWORD` is set, and it
 requires `DATABASE_URL` (Postgres is the command store). Without `PANEL_PASSWORD`
@@ -122,6 +125,7 @@ and all state-changing forms are CSRF-protected. Always use a strong
 | `PANEL_PASSWORD`   | No  | -       | Enables Telegram Bot Studio when set; password to sign in     |
 | `PANEL_USERNAME`   | No  | `admin` | Username for Telegram Bot Studio                              |
 | `PANEL_SECRET_KEY` | No  | derived | Secret for signing panel session cookies (derived from password if empty) |
+| `PANEL_SECURE_COOKIE` | No | Railway: `true` | Require HTTPS for panel session cookies |
 | `PORT`             | No  | `8080`  | Port the panel binds to (Railway injects this automatically)  |
 | `LOG_LEVEL`        | No  | `INFO`  | Logging level, such as `DEBUG`, `INFO`, or `ERROR`            |
 

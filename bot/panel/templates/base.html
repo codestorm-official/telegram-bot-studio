@@ -54,6 +54,13 @@
 
   <main class="main-content">
     <div class="content-wrap">
+      {% set flash = request.session.pop("flash", none) %}
+      {% if flash %}
+      <div class="toast {{ flash.kind }}" role="status">
+        <span>{% if flash.kind == "error" %}!{% else %}✓{% endif %}</span>
+        <div><strong>{{ flash.message }}</strong>{% if flash.refresh %}<small>To see the latest keyboard in Telegram, run <code>/start</code> again. You do not need to clear or reopen the chat.</small>{% endif %}</div>
+      </div>
+      {% endif %}
       {% block content %}{% endblock %}
     </div>
   </main>

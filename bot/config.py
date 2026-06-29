@@ -18,6 +18,7 @@ class Settings:
     panel_username: str = "admin"
     panel_password: str = ""
     panel_secret_key: str = ""
+    panel_secure_cookie: bool = False
 
     @property
     def panel_enabled(self) -> bool:
@@ -48,6 +49,12 @@ class Settings:
         panel_username = os.getenv("PANEL_USERNAME", "admin").strip() or "admin"
         panel_password = os.getenv("PANEL_PASSWORD", "").strip()
         panel_secret_key = os.getenv("PANEL_SECRET_KEY", "").strip()
+        secure_cookie_value = os.getenv("PANEL_SECURE_COOKIE", "").strip().lower()
+        panel_secure_cookie = (
+            secure_cookie_value in {"1", "true", "yes", "on"}
+            if secure_cookie_value
+            else bool(os.getenv("RAILWAY_ENVIRONMENT"))
+        )
         if panel_password and not database_url:
             raise RuntimeError(
                 "DATABASE_URL is required when PANEL_PASSWORD enables the admin panel. "
@@ -63,4 +70,5 @@ class Settings:
             panel_username=panel_username,
             panel_password=panel_password,
             panel_secret_key=panel_secret_key,
+            panel_secure_cookie=panel_secure_cookie,
         )

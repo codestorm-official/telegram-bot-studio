@@ -25,6 +25,7 @@ from bot.panel.auth import (
     login_required,
     verify_csrf,
 )
+from bot.panel.rate_limit import LoginRateLimiter
 
 
 logger = logging.getLogger(__name__)
@@ -34,10 +35,42 @@ templates = Jinja2Templates(directory=str(_BASE_DIR / "templates"))
 
 NAME_RE = re.compile(r"^[a-z0-9_]{1,32}$")
 BUILTIN_COMMANDS = ("start", "help", "about", "ping")
+login_limiter = LoginRateLimiter()
 
 
 def _get_pool(request: Request):
     return request.app.state.application.bot_data.get(DB_KEY)
+
+
+def _actor(request: Request) -> str:
+    return request.session.get("username") or request.app.state.settings.panel_username
+
+
+def _flash(
+    request: Request, message: str, *, kind: str = "success", refresh: bool = False
+) -> None:
+    request.session["flash"] = {
+        "message": message,
+        "kind": kind,
+        "refresh": refresh,
+    }
+
+
+async def _audit(
+    request: Request,
+    action: str,
+    entity_type: str,
+    entity_name: str,
+    details: dict | None = None,
+) -> None:
+    await db.add_audit_log(
+        _get_pool(request),
+        actor=_actor(request),
+        action=action,
+        entity_type=entity_type,
+        entity_name=entity_name,
+        details=details,
+    )
 
 
 async def _refresh(request: Request) -> None:
@@ -103,8 +136,9 @@ def create_app(application, settings) -> FastAPI:
     app.add_middleware(
         SessionMiddleware,
         secret_key=secret,
-        https_only=False,  # Railway terminates TLS upstream; cookie still works.
+        https_only=settings.panel_secure_cookie,
         same_site="lax",
+        max_age=60 * 60 * 12,
     )
 
     static_dir = _BASE_DIR / "static"
@@ -134,9 +168,25 @@ def create_app(application, settings) -> FastAPI:
         csrf_token: str = Form(""),
     ):
         verify_csrf(request, csrf_token)
+        client_key = request.client.host if request.client else "unknown"
+        if login_limiter.is_blocked(client_key):
+            return templates.TemplateResponse(
+                "login.html",
+                {
+                    "request": request,
+                    "csrf_token": get_csrf_token(request),
+                    "error": "Too many login attempts. Try again in a few minutes.",
+                },
+                status_code=429,
+            )
         if check_credentials(request, username, password):
+            login_limiter.reset(client_key)
             request.session["authenticated"] = True
+            request.session["username"] = username
+            request.session.pop("csrf", None)
+            get_csrf_token(request)
             return RedirectResponse("/", status_code=303)
+        login_limiter.record_failure(client_key)
         return templates.TemplateResponse(
             "login.html",
             {"request": request, "csrf_token": get_csrf_token(request), "error": "Invalid credentials."},
@@ -159,6 +209,7 @@ def create_app(application, settings) -> FastAPI:
             for item in items
             for row in (item.get("keyboard") or [])
         )
+        audit_items = await db.list_audit_log(pool, limit=8) if pool is not None else []
         return templates.TemplateResponse(
             "list.html",
             {
@@ -171,6 +222,7 @@ def create_app(application, settings) -> FastAPI:
                     ),
                     "buttons": len(button_items) + response_button_count,
                 },
+                "audit_items": audit_items,
                 "csrf_token": get_csrf_token(request),
             },
         )
@@ -216,7 +268,9 @@ def create_app(application, settings) -> FastAPI:
         if errors:
             return _render_form(request, "/commands/new", "New command", values, errors)
         await db.create_command(pool, **values)
+        await _audit(request, "created", "command", values["name"])
         await _refresh(request)
+        _flash(request, f"Command /{values['name']} was created.")
         return RedirectResponse("/commands", status_code=303)
 
     @app.get(
@@ -253,7 +307,15 @@ def create_app(application, settings) -> FastAPI:
                 request, f"/commands/{command_id}/edit", "Edit command", values, errors
             )
         await db.update_command(pool, command_id, **values)
+        await _audit(
+            request,
+            "updated",
+            "command",
+            values["name"],
+            {"previous_name": existing["name"] if existing else values["name"]},
+        )
         await _refresh(request)
+        _flash(request, f"Command /{values['name']} was updated.")
         return RedirectResponse("/commands", status_code=303)
 
     @app.get(
@@ -343,7 +405,23 @@ def create_app(application, settings) -> FastAPI:
         await db.update_command_keyboard(
             pool, command_id, None if clear_buttons else keyboard
         )
+        await _audit(
+            request,
+            "cleared" if clear_buttons else "updated",
+            "response_buttons",
+            selected["name"],
+            {"targets": [] if clear_buttons else selected_targets},
+        )
         await _refresh(request)
+        _flash(
+            request,
+            (
+                f"Response buttons for /{selected['name']} were removed."
+                if clear_buttons
+                else f"Response buttons for /{selected['name']} were updated."
+            ),
+            refresh=True,
+        )
         return RedirectResponse(
             f"/response-buttons?command_id={command_id}", status_code=303
         )
@@ -355,8 +433,22 @@ def create_app(application, settings) -> FastAPI:
         verify_csrf(request, csrf_token)
         pool = _get_pool(request)
         if pool is not None:
+            command = await db.get_command(pool, command_id)
+            if command is None:
+                return RedirectResponse("/commands", status_code=303)
+            dependencies = await db.command_dependencies(pool, command["name"])
+            if dependencies["menu_buttons"] or dependencies["response_buttons"]:
+                _flash(
+                    request,
+                    "Command cannot be deleted while Buttons or Response Buttons "
+                    "still target it. Remove those references first.",
+                    kind="error",
+                )
+                return RedirectResponse("/commands", status_code=303)
             await db.delete_command(pool, command_id)
+            await _audit(request, "deleted", "command", command["name"])
             await _refresh(request)
+            _flash(request, f"Command /{command['name']} was deleted.")
         return RedirectResponse("/commands", status_code=303)
 
     @app.get("/buttons", response_class=HTMLResponse, dependencies=[Depends(login_required)])
@@ -378,7 +470,9 @@ def create_app(application, settings) -> FastAPI:
         dependencies=[Depends(login_required)],
     )
     async def button_new_form(request: Request):
-        return await _render_button_form(request, {}, [])
+        return await _render_button_form(
+            request, {}, [], action="/buttons/new", title="Add button"
+        )
 
     @app.post(
         "/buttons/new",
@@ -417,10 +511,93 @@ def create_app(application, settings) -> FastAPI:
         if label.casefold() in {"help", "about", "ping"}:
             errors.append("This label is already used by a built-in button.")
         if errors:
-            return await _render_button_form(request, values, errors)
+            return await _render_button_form(
+                request, values, errors, action="/buttons/new", title="Add button"
+            )
 
         await db.create_menu_button(pool, **values)
+        await _audit(request, "created", "button", label, {"command": command_name})
         await _refresh(request)
+        _flash(
+            request,
+            f'Button "{label}" was created.',
+            refresh=True,
+        )
+        return RedirectResponse("/buttons", status_code=303)
+
+    @app.get(
+        "/buttons/{button_id}/edit",
+        response_class=HTMLResponse,
+        dependencies=[Depends(login_required)],
+    )
+    async def button_edit_form(request: Request, button_id: int):
+        button = await db.get_menu_button(_get_pool(request), button_id)
+        if button is None:
+            return RedirectResponse("/buttons", status_code=303)
+        return await _render_button_form(
+            request,
+            button,
+            [],
+            action=f"/buttons/{button_id}/edit",
+            title="Edit button",
+        )
+
+    @app.post(
+        "/buttons/{button_id}/edit",
+        response_class=HTMLResponse,
+        dependencies=[Depends(login_required)],
+    )
+    async def button_edit_submit(request: Request, button_id: int):
+        form = dict(await request.form())
+        verify_csrf(request, form.get("csrf_token"))
+        pool = _get_pool(request)
+        current = await db.get_menu_button(pool, button_id)
+        if current is None:
+            return RedirectResponse("/buttons", status_code=303)
+        values, errors = await _validate_button_form(
+            pool, form, exclude_button_id=button_id
+        )
+        if errors:
+            return await _render_button_form(
+                request,
+                values,
+                errors,
+                action=f"/buttons/{button_id}/edit",
+                title="Edit button",
+            )
+        await db.update_menu_button(pool, button_id, **values)
+        await _audit(
+            request,
+            "updated",
+            "button",
+            values["label"],
+            {"previous_label": current["label"], "command": values["command_name"]},
+        )
+        await _refresh(request)
+        _flash(request, f'Button "{values["label"]}" was updated.', refresh=True)
+        return RedirectResponse("/buttons", status_code=303)
+
+    @app.post(
+        "/buttons/reorder", dependencies=[Depends(login_required)]
+    )
+    async def button_reorder(request: Request):
+        form = dict(await request.form())
+        verify_csrf(request, form.get("csrf_token"))
+        try:
+            button_ids = [
+                int(value) for value in (form.get("order") or "").split(",") if value
+            ]
+        except ValueError:
+            button_ids = []
+        existing = await db.list_menu_buttons(_get_pool(request))
+        valid_ids = {item["id"] for item in existing}
+        if button_ids and set(button_ids) == valid_ids:
+            await db.reorder_menu_buttons(_get_pool(request), button_ids)
+            await _audit(request, "reordered", "buttons", "reply keyboard")
+            await _refresh(request)
+            _flash(request, "Button order was updated.", refresh=True)
+        else:
+            _flash(request, "Button order was invalid; no changes were saved.", kind="error")
         return RedirectResponse("/buttons", status_code=303)
 
     @app.post(
@@ -431,11 +608,53 @@ def create_app(application, settings) -> FastAPI:
     ):
         verify_csrf(request, csrf_token)
         pool = _get_pool(request)
-        await db.delete_menu_button(pool, button_id)
+        button = await db.get_menu_button(pool, button_id)
+        if button is not None:
+            await db.delete_menu_button(pool, button_id)
+            await _audit(request, "deleted", "button", button["label"])
         await _refresh(request)
+        _flash(
+            request,
+            f'Button "{button["label"]}" was deleted.' if button else "Button not found.",
+            kind="success" if button else "error",
+            refresh=button is not None,
+        )
         return RedirectResponse("/buttons", status_code=303)
 
-    async def _render_button_form(request, values, errors):
+    async def _validate_button_form(pool, form, *, exclude_button_id=None):
+        label = (form.get("label") or "").strip()
+        command_name = (form.get("command_name") or "").strip().lstrip("/").lower()
+        try:
+            row_index = max(0, int(form.get("row_index") or 0))
+            sort_order = int(form.get("sort_order") or 0)
+        except ValueError:
+            row_index, sort_order = 0, 0
+        values = {
+            "label": label,
+            "command_name": command_name,
+            "row_index": row_index,
+            "sort_order": sort_order,
+            "enabled": form.get("enabled") == "on",
+        }
+        errors = []
+        if not label or len(label) > 64:
+            errors.append("Button label must be between 1 and 64 characters.")
+        command_rows = await db.list_commands(pool, enabled_only=True)
+        valid_commands = set(BUILTIN_COMMANDS) | {item["name"] for item in command_rows}
+        if command_name not in valid_commands:
+            errors.append("Choose an available command for this button.")
+        existing = await db.list_menu_buttons(pool)
+        if any(
+            item["id"] != exclude_button_id
+            and item["label"].casefold() == label.casefold()
+            for item in existing
+        ):
+            errors.append("A button with this label already exists.")
+        if label.casefold() in {"help", "about", "ping"}:
+            errors.append("This label is already used by a built-in button.")
+        return values, errors
+
+    async def _render_button_form(request, values, errors, *, action, title):
         pool = _get_pool(request)
         command_rows = await db.list_commands(pool, enabled_only=True)
         available_commands = [
@@ -464,6 +683,8 @@ def create_app(application, settings) -> FastAPI:
                 "values": defaults,
                 "commands": available_commands,
                 "errors": errors,
+                "action": action,
+                "title": title,
             },
             status_code=400 if errors else 200,
         )

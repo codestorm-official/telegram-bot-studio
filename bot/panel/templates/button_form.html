@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Add button · Telegram Bot Studio{% endblock %}
+{% block title %}{{ title }} · Telegram Bot Studio{% endblock %}
 {% block content %}
   <section class="page-heading form-heading">
     <div>
       <a class="back-link" href="/buttons">← Back to buttons</a>
-      <h1>Add button</h1>
+      <h1>{{ title }}</h1>
       <p>Create a persistent Reply Keyboard button and connect it to a command.</p>
     </div>
   </section>
@@ -13,7 +13,7 @@
   <div class="errors" role="alert"><strong>Please fix the following</strong><ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul></div>
   {% endif %}
 
-  <form method="post" action="/buttons/new">
+  <form method="post" action="{{ action }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="editor-layout">
       <div class="editor-main">

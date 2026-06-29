@@ -9,6 +9,7 @@
     </div>
     <a class="btn btn-primary btn-large" href="/buttons/new">＋ Add button</a>
   </section>
+  <div class="info-banner"><span>i</span><p>After adding, editing, deleting, or reordering buttons, run <code>/start</code> in Telegram to display the latest keyboard.</p></div>
 
   <div class="card command-card">
     <div class="section-heading">
@@ -18,14 +19,16 @@
     <div class="table-wrap">
       <table>
         <thead><tr><th>Label</th><th>Runs command</th><th>Row</th><th>Status</th><th></th></tr></thead>
-        <tbody>
+        <tbody id="sortable-buttons">
         {% for button in buttons %}
-          <tr>
+          <tr draggable="true" data-button-id="{{ button.id }}">
             <td data-label="Label"><strong>{{ button.label }}</strong></td>
             <td data-label="Command"><span class="type-pill">/{{ button.command_name }}</span></td>
             <td data-label="Row">{{ button.row_index + 1 }}</td>
             <td data-label="Status">{% if button.enabled %}<span class="badge on"><i></i>Active</span>{% else %}<span class="badge off">Disabled</span>{% endif %}</td>
             <td class="action-cell">
+              <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+              <a class="icon-btn" href="/buttons/{{ button.id }}/edit" aria-label="Edit {{ button.label }}">✎</a>
               <form class="inline" method="post" action="/buttons/{{ button.id }}/delete" onsubmit="return confirm('Delete button {{ button.label }}?');">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button class="icon-btn danger" type="submit" aria-label="Delete {{ button.label }}">⌫</button>
@@ -36,6 +39,10 @@
         </tbody>
       </table>
     </div>
+    <form id="reorder-form" method="post" action="/buttons/reorder">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" id="button-order" name="order">
+    </form>
     {% else %}
     <div class="empty-state">
       <span>▤</span><h3>No custom buttons yet</h3>
@@ -44,4 +51,27 @@
     </div>
     {% endif %}
   </div>
+  {% if buttons %}
+  <script>
+    const body = document.querySelector('#sortable-buttons');
+    const form = document.querySelector('#reorder-form');
+    const order = document.querySelector('#button-order');
+    let dragged = null;
+    body.querySelectorAll('tr').forEach(row => {
+      row.addEventListener('dragstart', () => { dragged = row; row.classList.add('dragging'); });
+      row.addEventListener('dragend', () => row.classList.remove('dragging'));
+      row.addEventListener('dragover', event => {
+        event.preventDefault();
+        if (!dragged || dragged === row) return;
+        const rect = row.getBoundingClientRect();
+        body.insertBefore(dragged, event.clientY < rect.top + rect.height / 2 ? row : row.nextSibling);
+      });
+      row.addEventListener('drop', event => {
+        event.preventDefault();
+        order.value = [...body.querySelectorAll('tr')].map(item => item.dataset.buttonId).join(',');
+        form.submit();
+      });
+    });
+  </script>
+  {% endif %}
 {% endblock %}
