@@ -1,5 +1,6 @@
 """PostgreSQL access layer backed by an asyncpg connection pool."""
 
+import json
 import logging
 
 import asyncpg
@@ -32,6 +33,29 @@ ON CONFLICT (telegram_id) DO UPDATE
 RETURNING (xmax = 0) AS is_new;
 """
 
+# Dynamic commands managed through the admin panel. `keyboard` holds an optional
+# reply-keyboard layout as JSON (list of rows of button labels).
+CREATE_COMMANDS_TABLE = """
+CREATE TABLE IF NOT EXISTS commands (
+    id           SERIAL PRIMARY KEY,
+    name         TEXT NOT NULL UNIQUE,
+    description  TEXT NOT NULL DEFAULT '',
+    reply_type   TEXT NOT NULL DEFAULT 'text',
+    reply_text   TEXT NOT NULL DEFAULT '',
+    media_url    TEXT NOT NULL DEFAULT '',
+    keyboard     JSONB,
+    enabled      BOOLEAN NOT NULL DEFAULT TRUE,
+    show_in_menu BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+"""
+
+COMMAND_COLUMNS = (
+    "id, name, description, reply_type, reply_text, media_url, "
+    "keyboard, enabled, show_in_menu, created_at, updated_at"
+)
+
 
 async def create_pool(dsn: str) -> asyncpg.Pool:
     """Open the connection pool and ensure the schema exists. Raises on failure."""
@@ -43,6 +67,7 @@ async def create_pool(dsn: str) -> asyncpg.Pool:
     )
     async with pool.acquire() as conn:
         await conn.execute(CREATE_USERS_TABLE)
+        await conn.execute(CREATE_COMMANDS_TABLE)
     logger.info("PostgreSQL pool ready (schema initialized).")
     return pool
 
@@ -66,3 +91,108 @@ async def count_users(pool: asyncpg.Pool) -> int:
 async def close_pool(pool: asyncpg.Pool) -> None:
     await pool.close()
     logger.info("PostgreSQL pool closed.")
+
+
+# --- Dynamic command management (admin panel) --------------------------------
+
+
+def _command_to_dict(row: asyncpg.Record) -> dict:
+    """Normalise a command row into a plain dict, decoding the keyboard JSON."""
+    data = dict(row)
+    keyboard = data.get("keyboard")
+    if isinstance(keyboard, str):
+        try:
+            data["keyboard"] = json.loads(keyboard)
+        except (ValueError, TypeError):
+            data["keyboard"] = None
+    return data
+
+
+async def list_commands(pool: asyncpg.Pool, *, enabled_only: bool = False) -> list[dict]:
+    """Return all commands ordered by name (optionally only enabled ones)."""
+    query = f"SELECT {COMMAND_COLUMNS} FROM commands"
+    if enabled_only:
+        query += " WHERE enabled = TRUE"
+    query += " ORDER BY name;"
+    rows = await pool.fetch(query)
+    return [_command_to_dict(row) for row in rows]
+
+
+async def get_command(pool: asyncpg.Pool, command_id: int) -> dict | None:
+    row = await pool.fetchrow(
+        f"SELECT {COMMAND_COLUMNS} FROM commands WHERE id = $1;", command_id
+    )
+    return _command_to_dict(row) if row is not None else None
+
+
+async def create_command(
+    pool: asyncpg.Pool,
+    *,
+    name: str,
+    description: str,
+    reply_type: str,
+    reply_text: str,
+    media_url: str,
+    keyboard: list | None,
+    enabled: bool,
+    show_in_menu: bool,
+) -> dict:
+    row = await pool.fetchrow(
+        f"""
+        INSERT INTO commands
+            (name, description, reply_type, reply_text, media_url,
+             keyboard, enabled, show_in_menu)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING {COMMAND_COLUMNS};
+        """,
+        name,
+        description,
+        reply_type,
+        reply_text,
+        media_url,
+        json.dumps(keyboard) if keyboard else None,
+        enabled,
+        show_in_menu,
+    )
+    return _command_to_dict(row)
+
+
+async def update_command(
+    pool: asyncpg.Pool,
+    command_id: int,
+    *,
+    name: str,
+    description: str,
+    reply_type: str,
+    reply_text: str,
+    media_url: str,
+    keyboard: list | None,
+    enabled: bool,
+    show_in_menu: bool,
+) -> dict | None:
+    row = await pool.fetchrow(
+        f"""
+        UPDATE commands SET
+            name = $2, description = $3, reply_type = $4, reply_text = $5,
+            media_url = $6, keyboard = $7, enabled = $8, show_in_menu = $9,
+            updated_at = now()
+        WHERE id = $1
+        RETURNING {COMMAND_COLUMNS};
+        """,
+        command_id,
+        name,
+        description,
+        reply_type,
+        reply_text,
+        media_url,
+        json.dumps(keyboard) if keyboard else None,
+        enabled,
+        show_in_menu,
+    )
+    return _command_to_dict(row) if row is not None else None
+
+
+async def delete_command(pool: asyncpg.Pool, command_id: int) -> bool:
+    result = await pool.execute("DELETE FROM commands WHERE id = $1;", command_id)
+    # asyncpg returns a status string like "DELETE 1".
+    return result.endswith("1")

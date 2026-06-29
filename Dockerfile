@@ -15,4 +15,7 @@ COPY . .
 RUN useradd --create-home appuser
 USER appuser
 
+# Admin panel listens on $PORT (Railway injects this; defaults to 8080 locally).
+EXPOSE 8080
+
 CMD ["python", "-m", "bot.main"]

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="row" style="justify-content: space-between; margin-bottom: 16px;">
+    <h2 style="margin:0">Commands</h2>
+    <a class="btn btn-primary" href="/commands/new">+ New command</a>
+  </div>
+
+  {% if not db_connected %}
+    <div class="warn">Database not connected — commands cannot be loaded or saved.
+      Set <code>DATABASE_URL</code> to enable the command store.</div>
+  {% endif %}
+
+  <div class="card" style="padding:0">
+    <table>
+      <thead>
+        <tr><th>Command</th><th>Type</th><th>Menu</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for c in commands %}
+        <tr>
+          <td>
+            <strong>/{{ c.name }}</strong>
+            {% if c.description %}<div class="muted">{{ c.description }}</div>{% endif %}
+          </td>
+          <td>{{ c.reply_type }}</td>
+          <td>{% if c.show_in_menu %}<span class="badge on">yes</span>{% else %}<span class="badge off">no</span>{% endif %}</td>
+          <td>{% if c.enabled %}<span class="badge on">enabled</span>{% else %}<span class="badge off">disabled</span>{% endif %}</td>
+          <td>
+            <div class="actions">
+              <a class="btn btn-sm" href="/commands/{{ c.id }}/edit">Edit</a>
+              <form class="inline" method="post" action="/commands/{{ c.id }}/delete"
+                    onsubmit="return confirm('Delete /{{ c.name }}?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="btn btn-sm btn-danger" type="submit">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="muted" style="padding:20px">No commands yet. Create your first one.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

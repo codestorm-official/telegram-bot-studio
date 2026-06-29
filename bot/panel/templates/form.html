@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="row" style="justify-content: space-between; margin-bottom: 16px;">
+    <h2 style="margin:0">{{ title }}</h2>
+    <a class="btn btn-sm" href="/">Back</a>
+  </div>
+
+  {% if errors %}
+  <div class="errors">
+    Please fix the following:
+    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <form method="post" action="{{ action }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+      <label for="name">Command name</label>
+      <input type="text" id="name" name="name" value="{{ values.name }}" placeholder="promo">
+      <div class="hint">Without the slash. Lowercase letters, digits, underscore (max 32).</div>
+
+      <label for="description">Description (shown in Telegram menu)</label>
+      <input type="text" id="description" name="description" value="{{ values.description }}">
+
+      <label for="reply_type">Reply type</label>
+      <select id="reply_type" name="reply_type">
+        {% for t in reply_types %}
+        <option value="{{ t }}" {% if values.reply_type == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="reply_text">Text / caption</label>
+      <textarea id="reply_text" name="reply_text" placeholder="Message text (or caption for photo/document)">{{ values.reply_text }}</textarea>
+
+      <label for="media_url">Media URL or Telegram file_id (for photo/document)</label>
+      <input type="text" id="media_url" name="media_url" value="{{ values.media_url }}" placeholder="https://example.com/image.png">
+
+      <label for="keyboard">Reply keyboard (optional)</label>
+      <textarea id="keyboard" name="keyboard" placeholder="One row per line, comma-separated buttons:&#10;Help, About&#10;Ping">{{ keyboard_text }}</textarea>
+      <div class="hint">Each line is a row; commas split buttons into columns. Leave empty for none.</div>
+
+      <div class="row">
+        <div class="check">
+          <input type="checkbox" id="enabled" name="enabled" {% if values.enabled %}checked{% endif %}>
+          <label for="enabled">Enabled</label>
+        </div>
+        <div class="check">
+          <input type="checkbox" id="show_in_menu" name="show_in_menu" {% if values.show_in_menu %}checked{% endif %}>
+          <label for="show_in_menu">Show in command menu</label>
+        </div>
+      </div>
+
+      <div style="margin-top:20px">
+        <button class="btn btn-primary" type="submit">Save</button>
+        <a class="btn" href="/">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

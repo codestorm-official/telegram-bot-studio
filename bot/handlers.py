@@ -6,7 +6,7 @@ from telegram import ReplyKeyboardMarkup, Update
 from telegram.error import Conflict, NetworkError, TimedOut
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
-from bot import cache, db
+from bot import cache, commands, db
 
 
 logger = logging.getLogger(__name__)
@@ -135,10 +135,30 @@ async def echo_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await message.reply_text(f"You sent (#{count}):\n{message.text}")
 
 
-async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+def _parse_command_name(text: str) -> str:
+    """Extract the bare command name from message text (e.g. '/promo@bot a' -> 'promo')."""
+    token = text.strip().split(maxsplit=1)[0]  # '/promo@bot'
+    token = token.lstrip("/")
+    token = token.split("@", 1)[0]  # drop optional @botusername
+    return token.lower()
+
+
+async def dynamic_command_dispatcher(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Handle any command not served by a built-in handler.
+
+    Looks the command up in the panel-managed registry and replies with its
+    configured response, falling back to the 'unknown command' message.
+    """
     del context
     message = update.effective_message
-    if message is None:
+    if message is None or not message.text:
+        return
+
+    command = commands.lookup(_parse_command_name(message.text))
+    if command is not None:
+        await commands.send(message, command)
         return
 
     await message.reply_text("Unknown command. Type /help for assistance.")
@@ -163,7 +183,9 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def set_bot_commands(application: Application) -> None:
-    await application.bot.set_my_commands(BOT_COMMANDS)
+    """Publish the built-in commands plus any panel-managed ones to Telegram."""
+    menu = list(BOT_COMMANDS) + commands.menu_commands()
+    await application.bot.set_my_commands(menu)
 
 
 def register_handlers(application: Application) -> None:
@@ -171,7 +193,8 @@ def register_handlers(application: Application) -> None:
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("about", about))
     application.add_handler(CommandHandler("ping", ping))
-    application.add_handler(MessageHandler(filters.COMMAND, unknown_command))
+    # Any other /command is resolved dynamically from the panel-managed registry.
+    application.add_handler(MessageHandler(filters.COMMAND, dynamic_command_dispatcher))
     application.add_handler(
         MessageHandler(filters.Regex(f"^({MENU_HELP}|{MENU_ABOUT}|{MENU_PING})$"), menu_button)
     )

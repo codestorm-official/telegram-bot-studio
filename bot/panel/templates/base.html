@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Bot Panel UI{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  {% block topbar %}
+  <div class="topbar">
+    <div class="brand">🤖 Bot Panel UI</div>
+    <div>
+      <a class="btn btn-sm" href="/">Commands</a>
+      <form class="inline" method="post" action="/logout">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-sm" type="submit">Logout</button>
+      </form>
+    </div>
+  </div>
+  {% endblock %}
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

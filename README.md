@@ -15,6 +15,8 @@ A starter Telegram bot project built with [`python-telegram-bot`](https://python
 - Error logging
 - **PostgreSQL persistence** (asyncpg): users are stored/updated on `/start`
 - **Redis integration**: per-user message counter and a short-lived `/ping` cache
+- **Bot Panel UI**: a password-protected web dashboard to add/edit/delete dynamic
+  commands (text, photo/document, and reply keyboards) without redeploying
 - Configuration loaded from a local `.env` file or Railway variables
 - Ready to run with Docker and Railway
 
@@ -55,6 +57,28 @@ Telegram bots cannot display custom buttons before a user starts or messages the
 | `/about` | Show short bot information       |
 | `/ping`  | Check whether the bot is running |
 
+The built-in commands above always take precedence. Any other `/command` is
+resolved dynamically from commands you create in the Bot Panel UI.
+
+## Bot Panel UI
+
+A lightweight web dashboard (FastAPI) runs **in the same process** as the bot —
+no extra service required. Use it to manage dynamic commands at runtime:
+
+- Add, edit, enable/disable, and delete commands without redeploying.
+- Reply types: **text**, **photo**, or **document** (media via URL or a Telegram
+  `file_id`), each with an optional **reply keyboard**.
+- Changes apply immediately: the in-process registry and the Telegram command
+  menu are refreshed on every save.
+
+**Enabling it:** the panel is served only when `PANEL_PASSWORD` is set, and it
+requires `DATABASE_URL` (Postgres is the command store). Without `PANEL_PASSWORD`
+the bot runs as a plain poller. Once enabled, open your Railway service URL (or
+`http://localhost:8080` locally) and sign in with `PANEL_USERNAME` / `PANEL_PASSWORD`.
+
+Security: credentials are checked in constant time, sessions use signed cookies,
+and all state-changing forms are CSRF-protected. Always use a strong
+`PANEL_PASSWORD` since the panel is reachable on your public Railway domain.
 
 ## Project Structure
 
@@ -63,10 +87,16 @@ Telegram bots cannot display custom buttons before a user starts or messages the
 ├── bot/
 │   ├── __init__.py
 │   ├── cache.py        # Redis client and helpers
+│   ├── commands.py     # In-process registry for dynamic commands
 │   ├── config.py
 │   ├── db.py           # PostgreSQL pool and queries
 │   ├── handlers.py
-│   └── main.py
+│   ├── main.py
+│   └── panel/          # Bot Panel UI (FastAPI: app, auth, templates, static)
+│       ├── app.py
+│       ├── auth.py
+│       ├── templates/
+│       └── static/
 ├── .env
 ├── .env.example
 ├── .dockerignore
@@ -88,10 +118,14 @@ Telegram bots cannot display custom buttons before a user starts or messages the
 
 | Name           | Required | Default | Description                                        |
 | -------------- | -------- | ------- | -------------------------------------------------- |
-| `BOT_TOKEN`    | Yes      | -       | Bot token from `@BotFather`                        |
-| `DATABASE_URL` | No       | -       | PostgreSQL connection string; omit to run without persistence |
-| `REDIS_URL`    | No       | -       | Redis connection string; omit to run without caching          |
-| `LOG_LEVEL`    | No       | `INFO`  | Logging level, such as `DEBUG`, `INFO`, or `ERROR` |
+| `BOT_TOKEN`        | Yes | -       | Bot token from `@BotFather`                                   |
+| `DATABASE_URL`     | No  | -       | PostgreSQL connection string; omit to run without persistence. Required for the Bot Panel UI |
+| `REDIS_URL`        | No  | -       | Redis connection string; omit to run without caching          |
+| `PANEL_PASSWORD`   | No  | -       | Enables the Bot Panel UI when set; password to sign in        |
+| `PANEL_USERNAME`   | No  | `admin` | Username for the Bot Panel UI                                  |
+| `PANEL_SECRET_KEY` | No  | derived | Secret for signing panel session cookies (derived from password if empty) |
+| `PORT`             | No  | `8080`  | Port the panel binds to (Railway injects this automatically)  |
+| `LOG_LEVEL`        | No  | `INFO`  | Logging level, such as `DEBUG`, `INFO`, or `ERROR`            |
 
 On Railway, add the **PostgreSQL** and **Redis** plugins to your project and reference their
 connection strings from the bot service:
