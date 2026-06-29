@@ -1,2 +1,4 @@
 python-telegram-bot==22.7
 python-dotenv>=1.0,<2.0
+asyncpg>=0.30,<0.31
+redis>=5.0,<6.0

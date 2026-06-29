@@ -5,8 +5,14 @@ import logging
 from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
+from bot import cache, db
+
 
 logger = logging.getLogger(__name__)
+
+# Keys used to read shared connections from Application.bot_data.
+DB_KEY = "db"
+REDIS_KEY = "redis"
 
 BOT_COMMANDS = (
     ("start", "Show the main menu"),
@@ -36,15 +42,19 @@ Send a normal text message and the bot will echo it back."""
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    del context
     message = update.effective_message
     user = update.effective_user
-    if message is None:
+    if message is None or user is None:
         return
 
-    name = user.first_name if user and user.first_name else "friend"
+    # Persist the user in PostgreSQL (insert on first contact, refresh otherwise).
+    pool = context.bot_data[DB_KEY]
+    is_new = await db.upsert_user(pool, user.id, user.username, user.first_name)
+
+    name = user.first_name if user.first_name else "friend"
+    greeting = "Welcome" if is_new else "Welcome back"
     await message.reply_text(
-        f"Hello, {name}! The bot is running.\n\n"
+        f"{greeting}, {name}! The bot is running.\n\n"
         "Choose a menu button below or type /help to see the available commands.",
         reply_markup=MAIN_MENU_KEYBOARD,
     )
@@ -71,12 +81,15 @@ async def about(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    del context
     message = update.effective_message
     if message is None:
         return
 
-    await message.reply_text("pong")
+    # Demonstrate a short-lived Redis cache: warm within the TTL, cold otherwise.
+    client = context.bot_data[REDIS_KEY]
+    cached = await cache.get_or_set_ping(client)
+    source = "cached" if cached else "fresh"
+    await message.reply_text(f"pong ({source})")
 
 
 async def menu_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -94,12 +107,15 @@ async def menu_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 
 async def echo_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    del context
     message = update.effective_message
-    if message is None or not message.text:
+    user = update.effective_user
+    if message is None or not message.text or user is None:
         return
 
-    await message.reply_text(f"You sent:\n{message.text}")
+    # Track how many messages each user has sent using a Redis counter.
+    client = context.bot_data[REDIS_KEY]
+    count = await cache.increment_message_count(client, user.id)
+    await message.reply_text(f"You sent (#{count}):\n{message.text}")
 
 
 async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
