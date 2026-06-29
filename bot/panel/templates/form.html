@@ -19,9 +19,18 @@
 
   <form method="post" action="{{ action }}" id="command-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <nav class="wizard-nav" aria-label="Command setup">
+      <button type="button" class="wizard-tab active" data-go-step="1"><span>1</span><b>Command</b><small>Identity</small></button>
+      <i></i>
+      <button type="button" class="wizard-tab" data-go-step="2"><span>2</span><b>Reply</b><small>Content</small></button>
+      <i></i>
+      <button type="button" class="wizard-tab" data-go-step="3"><span>3</span><b>Buttons</b><small>Optional</small></button>
+      <i></i>
+      <button type="button" class="wizard-tab" data-go-step="4"><span>4</span><b>Publish</b><small>Visibility</small></button>
+    </nav>
     <div class="editor-layout">
       <div class="editor-main">
-        <section class="card form-section">
+        <section class="card form-section wizard-panel active" data-step="1" id="command">
           <div class="form-section-title"><span>01</span><div><h2>Command details</h2><p>Name the action and explain it to your users.</p></div></div>
           <div class="field-grid two">
             <div class="field">
@@ -37,7 +46,7 @@
           </div>
         </section>
 
-        <section class="card form-section">
+        <section class="card form-section wizard-panel" data-step="2" id="reply">
           <div class="form-section-title"><span>02</span><div><h2>Bot response</h2><p>Choose the content sent when this command is opened.</p></div></div>
           <div class="response-types" role="radiogroup" aria-label="Response type">
             {% for t in reply_types %}
@@ -61,7 +70,7 @@
           </div>
         </section>
 
-        <section class="card form-section" id="response-buttons">
+        <section class="card form-section wizard-panel" data-step="3" id="response-buttons">
           <div class="form-section-title"><span>03</span><div><h2>Response buttons</h2><p>Build a reply menu displayed with this response.</p></div></div>
           <div class="field">
             <label for="keyboard">Button layout <span class="optional">Optional</span></label>
@@ -73,7 +82,7 @@
           </div>
         </section>
 
-        <section class="card form-section" id="visibility">
+        <section class="card form-section wizard-panel" data-step="4" id="visibility">
           <div class="form-section-title"><span>04</span><div><h2>Publish & menu</h2><p>Control availability and discovery in the bot.</p></div></div>
           <label class="toggle-row">
             <span><strong>Command enabled</strong><small>Users can run this command immediately.</small></span>
@@ -108,9 +117,12 @@
       </aside>
     </div>
 
-    <div class="form-actions">
-      <a class="btn btn-secondary" href="/">Cancel</a>
-      <button class="btn btn-primary btn-large" type="submit">Save command <span>→</span></button>
+    <div class="form-actions wizard-actions">
+      <a class="btn btn-secondary wizard-cancel" href="/">Cancel</a>
+      <button class="btn btn-secondary wizard-back" type="button" hidden>← Back</button>
+      <span class="wizard-progress">Step <b>1</b> of 4</span>
+      <button class="btn btn-primary btn-large wizard-next" type="button">Continue <span>→</span></button>
+      <button class="btn btn-primary btn-large wizard-save" type="submit" hidden>Save command <span>✓</span></button>
     </div>
   </form>
 
@@ -126,6 +138,13 @@
       const previewMenu = document.querySelector('#preview-menu');
       const previewMenuLabel = document.querySelector('#preview-menu-label');
       const count = document.querySelector('#message-count');
+      const panels = [...document.querySelectorAll('.wizard-panel')];
+      const tabs = [...document.querySelectorAll('.wizard-tab')];
+      const back = document.querySelector('.wizard-back');
+      const next = document.querySelector('.wizard-next');
+      const save = document.querySelector('.wizard-save');
+      const progress = document.querySelector('.wizard-progress b');
+      let currentStep = 1;
 
       function render() {
         previewText.textContent = text.value.trim() || 'Your response will appear here.';
@@ -147,7 +166,47 @@
         previewMenuLabel.textContent = description.value.trim() || name.value.trim() || 'Menu button';
       }
       [text, keyboard, name, description, inMenu].forEach(element => element.addEventListener('input', render));
+
+      function showStep(step) {
+        currentStep = Math.max(1, Math.min(4, step));
+        panels.forEach(panel => panel.classList.toggle('active', Number(panel.dataset.step) === currentStep));
+        tabs.forEach(tab => {
+          const tabStep = Number(tab.dataset.goStep);
+          tab.classList.toggle('active', tabStep === currentStep);
+          tab.classList.toggle('complete', tabStep < currentStep);
+        });
+        back.hidden = currentStep === 1;
+        next.hidden = currentStep === 4;
+        save.hidden = currentStep !== 4;
+        progress.textContent = currentStep;
+        const hashes = ['', '#command', '#reply', '#response-buttons', '#visibility'];
+        history.replaceState(null, '', hashes[currentStep]);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function stepIsValid() {
+        const panel = panels.find(item => Number(item.dataset.step) === currentStep);
+        const fields = [...panel.querySelectorAll('input, textarea, select')];
+        return fields.every(field => field.reportValidity());
+      }
+
+      tabs.forEach(tab => tab.addEventListener('click', () => {
+        const target = Number(tab.dataset.goStep);
+        if (target <= currentStep || stepIsValid()) showStep(target);
+      }));
+      back.addEventListener('click', () => showStep(currentStep - 1));
+      next.addEventListener('click', () => {
+        if (stepIsValid()) showStep(currentStep + 1);
+      });
+
+      const initialSteps = {
+        '#command': 1,
+        '#reply': 2,
+        '#response-buttons': 3,
+        '#visibility': 4
+      };
       render();
+      showStep(initialSteps[window.location.hash] || {{ initial_step|default(1) }});
     })();
   </script>
 {% endblock %}

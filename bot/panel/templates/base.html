@@ -38,10 +38,15 @@
         <span class="nav-icon">＋</span><span>Add command</span>
       </a>
 
-      <p class="nav-label">Bot experience</p>
-      <a class="nav-item" href="/#menu-buttons">
-        <span class="nav-icon">▦</span><span>Inline menu</span>
+      <p class="nav-label">Create</p>
+      <a class="nav-item" href="/commands/new#reply">
+        <span class="nav-icon">↳</span><span>Add reply</span>
       </a>
+      <a class="nav-item" href="/commands/new#visibility">
+        <span class="nav-icon">▦</span><span>Add inline menu</span>
+      </a>
+
+      <p class="nav-label">Reply keyboard</p>
       <a class="nav-item {% if request.url.path == '/buttons' %}active{% endif %}" href="/buttons">
         <span class="nav-icon">▤</span><span>Buttons</span>
       </a>

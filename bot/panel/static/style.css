@@ -222,6 +222,51 @@ tbody tr:last-child td { border-bottom: 0; }
 
 .editor-layout { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 20px; align-items: start; }
 .editor-main { display: grid; gap: 16px; }
+.wizard-nav {
+  display: flex;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 15px 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.wizard-nav > i { height: 1px; flex: 1; margin: 0 9px; background: var(--border); }
+.wizard-tab {
+  display: grid;
+  grid-template-columns: 30px auto;
+  grid-template-rows: auto auto;
+  column-gap: 9px;
+  padding: 0;
+  border: 0;
+  color: var(--muted);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+.wizard-tab > span {
+  grid-row: 1 / 3;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #8c95a6;
+  background: #f0f2f6;
+  font-size: 10px;
+  font-weight: 700;
+}
+.wizard-tab b { align-self: end; color: #7b8496; font-size: 10px; }
+.wizard-tab small { align-self: start; margin-top: 1px; color: #a2a9b7; font-size: 8px; }
+.wizard-tab.active > span { color: #fff; background: var(--primary); box-shadow: 0 4px 12px rgba(88, 101, 242, .25); }
+.wizard-tab.active b { color: var(--text); }
+.wizard-tab.complete > span { color: var(--success); background: var(--success-soft); }
+.wizard-panel { display: none; min-height: 390px; animation: wizard-in .22s ease; }
+.wizard-panel.active { display: block; }
+@keyframes wizard-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .form-section { padding: 23px; scroll-margin-top: 20px; }
 .form-section-title { display: flex; gap: 12px; margin-bottom: 20px; }
 .form-section-title > span { width: 28px; height: 28px; flex: 0 0 28px; display: grid; place-items: center; border-radius: 8px; color: var(--primary); background: var(--primary-soft); font-size: 9px; font-weight: 700; }
@@ -300,6 +345,9 @@ textarea { min-height: 120px; resize: vertical; line-height: 1.55; }
 .preview-tip p { margin: 0; font-size: 8px; line-height: 1.5; }
 .preview-tip strong { display: block; margin-bottom: 2px; color: #454d77; font-size: 9px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; padding: 16px 0; }
+.wizard-cancel { margin-right: auto; }
+.wizard-progress { align-self: center; color: var(--muted); font-size: 10px; }
+.wizard-save[hidden], .wizard-next[hidden], .wizard-back[hidden] { display: none; }
 
 .errors { margin-bottom: 16px; padding: 13px 15px; border: 1px solid #ffc9ca; border-radius: 10px; color: var(--danger); background: var(--danger-soft); font-size: 11px; }
 .errors ul { margin: 6px 0 0; padding-left: 18px; }
@@ -343,10 +391,10 @@ form.inline { display: inline; }
   .main-content { margin-left: 0; }
   .content-wrap { padding: 26px 18px 48px; }
   .editor-layout { grid-template-columns: 1fr; }
-  .preview-column { order: -1; }
-  .preview-sticky { position: static; }
-  .phone-preview { max-width: 310px; margin: auto; }
-  .preview-label, .preview-tip { max-width: 310px; margin-right: auto; margin-left: auto; }
+  .preview-column { display: none; }
+  .wizard-nav { overflow-x: auto; }
+  .wizard-nav > i { min-width: 18px; }
+  .wizard-tab { min-width: 96px; }
 }
 
 @media (max-width: 560px) {
@@ -375,6 +423,13 @@ form.inline { display: inline; }
   .response-option-body { min-height: 52px; }
   .syntax-help { align-items: flex-start; flex-direction: column; gap: 4px; }
   .form-section { padding: 18px; }
+  .wizard-nav { margin-right: -18px; margin-left: -18px; padding: 12px 18px; border-right: 0; border-left: 0; border-radius: 0; }
+  .wizard-tab { min-width: auto; display: block; text-align: center; }
+  .wizard-tab > span { margin: auto; }
+  .wizard-tab b { display: block; margin-top: 5px; font-size: 9px; }
+  .wizard-tab small { display: none; }
+  .wizard-panel { min-height: 0; }
   .form-actions { position: sticky; bottom: 0; z-index: 20; margin: 12px -18px -48px; padding: 12px 18px; border-top: 1px solid var(--border); background: rgba(255,255,255,.94); backdrop-filter: blur(12px); }
   .form-actions .btn { flex: 1; }
+  .wizard-progress, .wizard-cancel { display: none; }
 }

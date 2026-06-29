@@ -199,6 +199,7 @@ def create_app(application, settings) -> FastAPI:
                 "values": _empty_command(),
                 "reply_types": commands.REPLY_TYPES,
                 "keyboard_text": "",
+                "initial_step": 1,
             },
         )
 
@@ -382,6 +383,14 @@ def create_app(application, settings) -> FastAPI:
                 "values": values,
                 "reply_types": commands.REPLY_TYPES,
                 "keyboard_text": _keyboard_to_text(values.get("keyboard")),
+                "initial_step": (
+                    2
+                    if any(
+                        error.startswith(("Text reply", "Photo/document", "Media URL"))
+                        for error in errors
+                    )
+                    else 1
+                ),
             },
             status_code=400 if errors else 200,
         )
