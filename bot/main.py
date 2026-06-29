@@ -82,27 +82,38 @@ def build_application(settings: Settings) -> Application:
 
 async def _run_with_panel(application: Application, settings: Settings) -> None:
     """Run Telegram polling and the admin panel together in one event loop."""
-    await application.initialize()  # triggers on_startup (connect + load commands)
-    await application.start()
-    await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
-    logger.info("Bot polling started; admin panel listening on port %d.", settings.port)
-
-    web = create_app(application, settings)
-    config = uvicorn.Config(
-        web,
-        host="0.0.0.0",
-        port=settings.port,
-        log_level=settings.log_level.lower(),
-        access_log=False,
-    )
-    server = uvicorn.Server(config)
+    # Application.initialize()/shutdown() deliberately do not invoke the
+    # builder's post_init/post_shutdown callbacks. run_polling() normally does
+    # that for us, but this custom runner must execute them explicitly.
+    await application.initialize()
     try:
+        if application.post_init is not None:
+            await application.post_init(application)
+
+        await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+        await application.start()
+        logger.info(
+            "Bot polling started; admin panel listening on port %d.", settings.port
+        )
+
+        web = create_app(application, settings)
+        config = uvicorn.Config(
+            web,
+            host="0.0.0.0",
+            port=settings.port,
+            log_level=settings.log_level.lower(),
+            access_log=False,
+        )
+        server = uvicorn.Server(config)
         await server.serve()  # blocks until SIGTERM/SIGINT
     finally:
         if application.updater is not None and application.updater.running:
             await application.updater.stop()
-        await application.stop()
-        await application.shutdown()  # triggers on_shutdown (close pool)
+        if application.running:
+            await application.stop()
+        await application.shutdown()
+        if application.post_shutdown is not None:
+            await application.post_shutdown(application)
 
 
 def main() -> None:
