@@ -154,19 +154,38 @@ def create_app(application, settings) -> FastAPI:
         pool = _get_pool(request)
         items = await db.list_commands(pool) if pool is not None else []
         button_items = await db.list_menu_buttons(pool) if pool is not None else []
+        response_button_count = sum(
+            len(row)
+            for item in items
+            for row in (item.get("keyboard") or [])
+        )
         return templates.TemplateResponse(
             "list.html",
             {
                 "request": request,
-                "commands": items,
                 "stats": {
                     "total": len(items),
                     "enabled": sum(bool(item["enabled"]) for item in items),
                     "in_menu": sum(
                         bool(item["enabled"] and item["show_in_menu"]) for item in items
                     ),
-                    "buttons": len(button_items),
+                    "buttons": len(button_items) + response_button_count,
                 },
+                "csrf_token": get_csrf_token(request),
+            },
+        )
+
+    @app.get(
+        "/commands", response_class=HTMLResponse, dependencies=[Depends(login_required)]
+    )
+    async def commands_index(request: Request):
+        pool = _get_pool(request)
+        items = await db.list_commands(pool) if pool is not None else []
+        return templates.TemplateResponse(
+            "commands.html",
+            {
+                "request": request,
+                "commands": items,
                 "csrf_token": get_csrf_token(request),
             },
         )
@@ -198,7 +217,7 @@ def create_app(application, settings) -> FastAPI:
             return _render_form(request, "/commands/new", "New command", values, errors)
         await db.create_command(pool, **values)
         await _refresh(request)
-        return RedirectResponse("/", status_code=303)
+        return RedirectResponse("/commands", status_code=303)
 
     @app.get(
         "/commands/{command_id}/edit",
@@ -209,7 +228,7 @@ def create_app(application, settings) -> FastAPI:
         pool = _get_pool(request)
         command = await db.get_command(pool, command_id) if pool is not None else None
         if command is None:
-            return RedirectResponse("/", status_code=303)
+            return RedirectResponse("/commands", status_code=303)
         return _render_form(
             request, f"/commands/{command_id}/edit", "Edit command", command, []
         )
@@ -235,7 +254,7 @@ def create_app(application, settings) -> FastAPI:
             )
         await db.update_command(pool, command_id, **values)
         await _refresh(request)
-        return RedirectResponse("/", status_code=303)
+        return RedirectResponse("/commands", status_code=303)
 
     @app.get(
         "/response-buttons",
@@ -338,7 +357,7 @@ def create_app(application, settings) -> FastAPI:
         if pool is not None:
             await db.delete_command(pool, command_id)
             await _refresh(request)
-        return RedirectResponse("/", status_code=303)
+        return RedirectResponse("/commands", status_code=303)
 
     @app.get("/buttons", response_class=HTMLResponse, dependencies=[Depends(login_required)])
     async def buttons_index(request: Request):

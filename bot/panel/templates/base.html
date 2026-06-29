@@ -31,23 +31,16 @@
       <a class="nav-item {% if request.url.path == '/' %}active{% endif %}" href="/">
         <span class="nav-icon">⌂</span><span>Overview</span>
       </a>
-      <a class="nav-item" href="/#commands">
+      <a class="nav-item {% if request.url.path.startswith('/commands') %}active{% endif %}" href="/commands">
         <span class="nav-icon">⌘</span><span>Commands</span>
       </a>
       <a class="nav-item {% if request.url.path == '/response-buttons' %}active{% endif %}" href="/response-buttons">
         <span class="nav-icon">▦</span><span>Response buttons</span>
       </a>
-      <a class="nav-item {% if request.url.path == '/buttons' %}active{% endif %}" href="/buttons">
+      <a class="nav-item {% if request.url.path.startswith('/buttons') %}active{% endif %}" href="/buttons">
         <span class="nav-icon">▤</span><span>Reply keyboard</span>
       </a>
 
-      <p class="nav-label">Create</p>
-      <a class="nav-item {% if request.url.path == '/commands/new' %}active{% endif %}" href="/commands/new">
-        <span class="nav-icon">＋</span><span>Add command</span>
-      </a>
-      <a class="nav-item {% if request.url.path == '/buttons/new' %}active{% endif %}" href="/buttons/new">
-        <span class="nav-icon">＋</span><span>Add button</span>
-      </a>
     </nav>
 
     <div class="sidebar-footer">

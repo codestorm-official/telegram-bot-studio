@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Commands · Bot Studio{% endblock %}
+{% block content %}
+  <section class="page-heading">
+    <div><span class="eyebrow">Bot content</span><h1>Commands</h1><p>Create commands and manage the reply each command sends.</p></div>
+    <a class="btn btn-primary btn-large" href="/commands/new">＋ Add command</a>
+  </section>
+  <section class="card command-card">
+    {% if commands %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Command</th><th>Response</th><th>Inline menu</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
+        <tbody>
+        {% for command in commands %}
+          <tr>
+            <td data-label="Command"><div class="command-name"><span class="command-icon">/</span><div><strong>{{ command.name }}</strong>{% if command.description %}<small>{{ command.description }}</small>{% endif %}</div></div></td>
+            <td data-label="Response"><span class="type-pill">{{ command.reply_type }}</span>{% if command.keyboard %}<span class="mini-note">+ buttons</span>{% endif %}</td>
+            <td data-label="Inline menu">{% if command.show_in_menu %}<span class="badge on"><i></i>Visible</span>{% else %}<span class="badge off">Hidden</span>{% endif %}</td>
+            <td data-label="Status">{% if command.enabled %}<span class="badge on"><i></i>Active</span>{% else %}<span class="badge off">Disabled</span>{% endif %}</td>
+            <td class="action-cell">
+              <a class="icon-btn" href="/commands/{{ command.id }}/edit" aria-label="Edit /{{ command.name }}">✎</a>
+              <form class="inline" method="post" action="/commands/{{ command.id }}/delete" onsubmit="return confirm('Delete /{{ command.name }}?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="icon-btn danger" type="submit" aria-label="Delete /{{ command.name }}">⌫</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><span>⌘</span><h3>No commands yet</h3><p>Create your first command and reply.</p><a class="btn btn-primary" href="/commands/new">Create command</a></div>
+    {% endif %}
+  </section>
+{% endblock %}

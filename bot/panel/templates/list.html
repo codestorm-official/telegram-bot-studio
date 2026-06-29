@@ -3,102 +3,46 @@
 {% block content %}
   <section class="page-heading">
     <div>
-      <span class="eyebrow">Control center</span>
-      <h1>Welcome back 👋</h1>
-      <p>Build your bot menu, publish commands, and manage every response from one place.</p>
+      <span class="eyebrow">Overview</span>
+      <h1>Bot summary</h1>
+      <p>A concise view of your bot configuration and what each workspace feature does.</p>
     </div>
-    <a class="btn btn-primary btn-large" href="/commands/new"><span>＋</span> New command</a>
   </section>
 
   <section class="stats-grid" aria-label="Bot statistics">
     <article class="stat-card accent-blue">
-      <span class="stat-icon">⌘</span>
+      <span class="stat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5 4 12l4 7M16 5l4 7-4 7M14 3l-4 18"/></svg></span>
       <div><strong>{{ stats.total }}</strong><span>Total commands</span></div>
     </article>
     <article class="stat-card accent-green">
-      <span class="stat-icon">✓</span>
+      <span class="stat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></span>
       <div><strong>{{ stats.enabled }}</strong><span>Active commands</span></div>
     </article>
-    <article class="stat-card accent-purple" id="menu-buttons">
-      <span class="stat-icon">▦</span>
+    <article class="stat-card accent-purple">
+      <span class="stat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 9h4M14 9h3M7 14h3M13 14h4"/></svg></span>
       <div><strong>{{ stats.in_menu }}</strong><span>Inline menu buttons</span></div>
     </article>
     <article class="stat-card accent-orange">
-      <span class="stat-icon">↳</span>
-      <div><strong>{{ stats.buttons }}</strong><span>Custom reply buttons</span></div>
+      <span class="stat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 15h4M14 15h3"/></svg></span>
+      <div><strong>{{ stats.buttons }}</strong><span>Total buttons</span></div>
     </article>
   </section>
 
-  <section class="quick-grid">
-    <article class="card quick-card">
-      <span class="quick-icon blue">＋</span>
-      <div>
-        <h3>Create a command</h3>
-        <p>Add text, photos, or documents as an automated response.</p>
-        <a href="/commands/new">Create command <span>→</span></a>
-      </div>
-    </article>
-    <article class="card quick-card">
-      <span class="quick-icon purple">▦</span>
-      <div>
-        <h3>Response buttons</h3>
-        <p>Select a command and configure buttons below its reply.</p>
-        <a href="/response-buttons">Manage response buttons <span>→</span></a>
-      </div>
-    </article>
-    <article class="card quick-card">
-      <span class="quick-icon orange">↳</span>
-      <div>
-        <h3>Add a reply button</h3>
-        <p>Add a persistent main keyboard button and connect it to any command.</p>
-        <a href="/buttons/new">Add button <span>→</span></a>
-      </div>
-    </article>
-  </section>
-
-  <section class="card command-card" id="commands">
-    <div class="section-heading">
-      <div>
-        <span class="eyebrow">Content</span>
-        <h2>Commands</h2>
-      </div>
-      <a class="btn btn-secondary" href="/commands/new">＋ Add command</a>
+  <section class="card feature-overview">
+    <div class="section-heading"><div><span class="eyebrow">Workspace guide</span><h2>What each feature does</h2></div></div>
+    <div class="feature-list">
+      <a href="/commands">
+        <span class="feature-list-icon"><svg viewBox="0 0 24 24"><path d="M8 5 4 12l4 7M16 5l4 7-4 7M14 3l-4 18"/></svg></span>
+        <span><strong>Commands</strong><small>Create, edit, enable, and manage the reply for every bot command.</small></span><b>→</b>
+      </a>
+      <a href="/response-buttons">
+        <span class="feature-list-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 10h4M14 10h3M7 15h10"/></svg></span>
+        <span><strong>Response buttons</strong><small>Attach command shortcuts below the response of another command.</small></span><b>→</b>
+      </a>
+      <a href="/buttons">
+        <span class="feature-list-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 15h4M14 15h3"/></svg></span>
+        <span><strong>Reply keyboard</strong><small>Manage persistent main-menu buttons displayed below Telegram's message field.</small></span><b>→</b>
+      </a>
     </div>
-
-    {% if commands %}
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>Command</th><th>Response</th><th>Inline menu</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr>
-        </thead>
-        <tbody>
-          {% for c in commands %}
-          <tr>
-            <td data-label="Command">
-              <div class="command-name"><span class="command-icon">/</span><div><strong>{{ c.name }}</strong>{% if c.description %}<small>{{ c.description }}</small>{% endif %}</div></div>
-            </td>
-            <td data-label="Response"><span class="type-pill">{{ c.reply_type }}</span>{% if c.keyboard %}<span class="mini-note">+ buttons</span>{% endif %}</td>
-            <td data-label="Inline menu">{% if c.show_in_menu %}<span class="badge on"><i></i>Visible</span>{% else %}<span class="badge off">Hidden</span>{% endif %}</td>
-            <td data-label="Status">{% if c.enabled %}<span class="badge on"><i></i>Active</span>{% else %}<span class="badge off">Disabled</span>{% endif %}</td>
-            <td class="action-cell">
-              <a class="icon-btn" href="/commands/{{ c.id }}/edit" aria-label="Edit /{{ c.name }}">✎</a>
-              <form class="inline" method="post" action="/commands/{{ c.id }}/delete"
-                    onsubmit="return confirm('Delete /{{ c.name }}?');">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <button class="icon-btn danger" type="submit" aria-label="Delete /{{ c.name }}">⌫</button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <div class="empty-state">
-      <span>⌘</span><h3>Your command list is empty</h3>
-      <p>Create the first command and make it visible in your bot's inline menu.</p>
-      <a class="btn btn-primary" href="/commands/new">Create first command</a>
-    </div>
-    {% endif %}
   </section>
 {% endblock %}
