@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 DB_KEY = "db"
 REDIS_KEY = "redis"
 
+# In-memory fallback for the per-user message counter when Redis is unavailable.
+# Process-local and non-persistent, but keeps the feature working for local testing.
+_LOCAL_MESSAGE_COUNTS: dict[int, int] = {}
+
 BOT_COMMANDS = (
     ("start", "Show the main menu"),
     ("help", "Show help"),
@@ -47,9 +51,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if message is None or user is None:
         return
 
-    # Persist the user in PostgreSQL (insert on first contact, refresh otherwise).
-    pool = context.bot_data[DB_KEY]
-    is_new = await db.upsert_user(pool, user.id, user.username, user.first_name)
+    # Persist the user in PostgreSQL when available (insert on first contact,
+    # refresh otherwise). Without a database the bot still greets the user.
+    pool = context.bot_data.get(DB_KEY)
+    is_new = True
+    if pool is not None:
+        is_new = await db.upsert_user(pool, user.id, user.username, user.first_name)
 
     name = user.first_name if user.first_name else "friend"
     greeting = "Welcome" if is_new else "Welcome back"
@@ -86,7 +93,12 @@ async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     # Demonstrate a short-lived Redis cache: warm within the TTL, cold otherwise.
-    client = context.bot_data[REDIS_KEY]
+    # Without Redis we simply reply with a plain pong.
+    client = context.bot_data.get(REDIS_KEY)
+    if client is None:
+        await message.reply_text("pong")
+        return
+
     cached = await cache.get_or_set_ping(client)
     source = "cached" if cached else "fresh"
     await message.reply_text(f"pong ({source})")
@@ -112,9 +124,13 @@ async def echo_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if message is None or not message.text or user is None:
         return
 
-    # Track how many messages each user has sent using a Redis counter.
-    client = context.bot_data[REDIS_KEY]
-    count = await cache.increment_message_count(client, user.id)
+    # Track how many messages each user has sent using a Redis counter, falling
+    # back to an in-memory counter when Redis is unavailable.
+    client = context.bot_data.get(REDIS_KEY)
+    if client is not None:
+        count = await cache.increment_message_count(client, user.id)
+    else:
+        count = _LOCAL_MESSAGE_COUNTS[user.id] = _LOCAL_MESSAGE_COUNTS.get(user.id, 0) + 1
     await message.reply_text(f"You sent (#{count}):\n{message.text}")
 
 

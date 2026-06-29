@@ -27,11 +27,32 @@ def configure_logging(level_name: str) -> None:
     )
 
 
+async def _connect_optional(name, url, connect):
+    """Connect to an optional backend, returning None when unavailable.
+
+    Missing/empty URL -> skipped with a warning. Connection failure -> logged as
+    an error but the bot keeps running without that backend.
+    """
+    if not url:
+        logger.warning("%s URL not set - running without it.", name)
+        return None
+    try:
+        return await connect(url)
+    except Exception:
+        logger.exception("%s unavailable - running without it.", name)
+        return None
+
+
 def build_application(settings: Settings) -> Application:
     async def on_startup(application: Application) -> None:
-        # Fail fast: if either backend is unreachable the bot must not start.
-        application.bot_data[DB_KEY] = await db.create_pool(settings.database_url)
-        application.bot_data[REDIS_KEY] = await cache.create_client(settings.redis_url)
+        # Optional backends: the bot runs even when DATABASE_URL / REDIS_URL are
+        # missing or unreachable, degrading gracefully instead of refusing to start.
+        application.bot_data[DB_KEY] = await _connect_optional(
+            "PostgreSQL", settings.database_url, db.create_pool
+        )
+        application.bot_data[REDIS_KEY] = await _connect_optional(
+            "Redis", settings.redis_url, cache.create_client
+        )
         await set_bot_commands(application)
 
     async def on_shutdown(application: Application) -> None:

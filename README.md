@@ -20,13 +20,17 @@ A starter Telegram bot project built with [`python-telegram-bot`](https://python
 
 ## Data Stores
 
-The bot connects to PostgreSQL and Redis on startup and **fails fast** if either is
-unreachable, so a misconfigured deployment surfaces immediately instead of running half-broken.
+PostgreSQL and Redis are **optional**. When `DATABASE_URL` / `REDIS_URL` are set the bot
+connects on startup; when they are missing, empty, or unreachable it logs a warning and keeps
+running with that backend disabled. This makes local testing easy, while Railway just links
+the services automatically.
 
 - **PostgreSQL** — a `users` table is created automatically on first run. `/start` inserts
   a new user or refreshes `username`, `first_name`, and `last_seen` for an existing one.
+  Without a database, `/start` still greets the user but nothing is persisted.
 - **Redis** — `/ping` reports whether the reply came from a 10-second cache (`fresh` vs
-  `cached`), and each echoed text message increments a per-user counter.
+  `cached`), and each echoed text message increments a per-user counter. Without Redis,
+  `/ping` replies with a plain `pong` and the counter falls back to in-memory (per-process).
 
 Connections are pooled (asyncpg) and reused across updates, then closed cleanly on shutdown.
 
@@ -85,8 +89,8 @@ Telegram bots cannot display custom buttons before a user starts or messages the
 | Name           | Required | Default | Description                                        |
 | -------------- | -------- | ------- | -------------------------------------------------- |
 | `BOT_TOKEN`    | Yes      | -       | Bot token from `@BotFather`                        |
-| `DATABASE_URL` | Yes      | -       | PostgreSQL connection string                       |
-| `REDIS_URL`    | Yes      | -       | Redis connection string                            |
+| `DATABASE_URL` | No       | -       | PostgreSQL connection string; omit to run without persistence |
+| `REDIS_URL`    | No       | -       | Redis connection string; omit to run without caching          |
 | `LOG_LEVEL`    | No       | `INFO`  | Logging level, such as `DEBUG`, `INFO`, or `ERROR` |
 
 On Railway, add the **PostgreSQL** and **Redis** plugins to your project and reference their

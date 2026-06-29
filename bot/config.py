@@ -24,19 +24,11 @@ class Settings:
                 "BOT_TOKEN is not set. Add it to your local .env file or Railway variables."
             )
 
+        # DATABASE_URL / REDIS_URL are optional: when absent or empty the bot
+        # still starts and simply runs without persistence / caching. This keeps
+        # local testing easy; on Railway the linked services fill these in.
         database_url = os.getenv("DATABASE_URL", "").strip()
-        if not database_url:
-            raise RuntimeError(
-                "DATABASE_URL is not set. Add a PostgreSQL connection string to your "
-                ".env file or Railway variables."
-            )
-
         redis_url = os.getenv("REDIS_URL", "").strip()
-        if not redis_url:
-            raise RuntimeError(
-                "REDIS_URL is not set. Add a Redis connection string to your "
-                ".env file or Railway variables."
-            )
 
         log_level = os.getenv("LOG_LEVEL", "INFO").strip().upper() or "INFO"
         return cls(
