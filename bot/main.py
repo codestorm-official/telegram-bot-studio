@@ -7,11 +7,10 @@ import uvicorn
 from telegram import Update
 from telegram.ext import Application, ApplicationBuilder
 
-from bot import cache, commands, db
+from bot import commands, db
 from bot.config import Settings
 from bot.handlers import (
     DB_KEY,
-    REDIS_KEY,
     error_handler,
     register_handlers,
     set_bot_commands,
@@ -30,31 +29,31 @@ def configure_logging(level_name: str) -> None:
     )
 
 
-async def _connect_optional(name, url, connect):
-    """Connect to an optional backend, returning None when unavailable.
+async def _connect_database(url: str, *, required: bool):
+    """Connect to Postgres, only degrading gracefully for a bot-only process.
 
-    Missing/empty URL -> skipped with a warning. Connection failure -> logged as
-    an error but the bot keeps running without that backend.
+    A panel with no database is unusable, so fail startup instead of serving a
+    permanently disconnected UI after a transient or configuration error.
     """
     if not url:
-        logger.warning("%s URL not set - running without it.", name)
+        logger.warning("DATABASE_URL not set - running without PostgreSQL persistence.")
         return None
     try:
-        return await connect(url)
-    except Exception:
-        logger.exception("%s unavailable - running without it.", name)
+        return await db.create_pool(url)
+    except Exception as exc:
+        if required:
+            raise RuntimeError(
+                "PostgreSQL connection failed. Check DATABASE_URL in the bot "
+                "service and confirm the Railway Postgres service is running."
+            ) from exc
+        logger.exception("PostgreSQL unavailable - running without persistence.")
         return None
 
 
 def build_application(settings: Settings) -> Application:
     async def on_startup(application: Application) -> None:
-        # Optional backends: the bot runs even when DATABASE_URL / REDIS_URL are
-        # missing or unreachable, degrading gracefully instead of refusing to start.
-        application.bot_data[DB_KEY] = await _connect_optional(
-            "PostgreSQL", settings.database_url, db.create_pool
-        )
-        application.bot_data[REDIS_KEY] = await _connect_optional(
-            "Redis", settings.redis_url, cache.create_client
+        application.bot_data[DB_KEY] = await _connect_database(
+            settings.database_url, required=settings.panel_enabled
         )
         # Load panel-managed commands before publishing the Telegram menu.
         await commands.reload(application.bot_data[DB_KEY])
@@ -68,10 +67,6 @@ def build_application(settings: Settings) -> Application:
         pool = application.bot_data.get(DB_KEY)
         if pool is not None:
             await db.close_pool(pool)
-
-        client = application.bot_data.get(REDIS_KEY)
-        if client is not None:
-            await cache.close_client(client)
 
     application = (
         ApplicationBuilder()
@@ -107,7 +102,7 @@ async def _run_with_panel(application: Application, settings: Settings) -> None:
         if application.updater is not None and application.updater.running:
             await application.updater.stop()
         await application.stop()
-        await application.shutdown()  # triggers on_shutdown (close pool/redis)
+        await application.shutdown()  # triggers on_shutdown (close pool)
 
 
 def main() -> None:

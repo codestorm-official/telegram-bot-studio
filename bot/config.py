@@ -13,7 +13,6 @@ load_dotenv()
 class Settings:
     bot_token: str
     database_url: str
-    redis_url: str
     log_level: str = "INFO"
     port: int = 8080
     panel_username: str = "admin"
@@ -33,11 +32,9 @@ class Settings:
                 "BOT_TOKEN is not set. Add it to your local .env file or Railway variables."
             )
 
-        # DATABASE_URL / REDIS_URL are optional: when absent or empty the bot
-        # still starts and simply runs without persistence / caching. This keeps
-        # local testing easy; on Railway the linked services fill these in.
+        # The database remains optional for a bot-only process, but the admin
+        # panel cannot work without its command store.
         database_url = os.getenv("DATABASE_URL", "").strip()
-        redis_url = os.getenv("REDIS_URL", "").strip()
 
         log_level = os.getenv("LOG_LEVEL", "INFO").strip().upper() or "INFO"
 
@@ -51,11 +48,16 @@ class Settings:
         panel_username = os.getenv("PANEL_USERNAME", "admin").strip() or "admin"
         panel_password = os.getenv("PANEL_PASSWORD", "").strip()
         panel_secret_key = os.getenv("PANEL_SECRET_KEY", "").strip()
+        if panel_password and not database_url:
+            raise RuntimeError(
+                "DATABASE_URL is required when PANEL_PASSWORD enables the admin panel. "
+                "On Railway, add DATABASE_URL=${{ Postgres.DATABASE_URL }} to the "
+                "bot service variables."
+            )
 
         return cls(
             bot_token=bot_token,
             database_url=database_url,
-            redis_url=redis_url,
             log_level=log_level,
             port=port,
             panel_username=panel_username,

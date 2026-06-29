@@ -14,27 +14,27 @@ A starter Telegram bot project built with [`python-telegram-bot`](https://python
 - Fallback handler for unknown commands
 - Error logging
 - **PostgreSQL persistence** (asyncpg): users are stored/updated on `/start`
-- **Redis integration**: per-user message counter and a short-lived `/ping` cache
+- Per-process message counter for echoed messages
 - **Bot Panel UI**: a password-protected web dashboard to add/edit/delete dynamic
   commands (text, photo/document, and reply keyboards) without redeploying
 - Configuration loaded from a local `.env` file or Railway variables
 - Ready to run with Docker and Railway
 
-## Data Stores
+## Data Store
 
-PostgreSQL and Redis are **optional**. When `DATABASE_URL` / `REDIS_URL` are set the bot
-connects on startup; when they are missing, empty, or unreachable it logs a warning and keeps
-running with that backend disabled. This makes local testing easy, while Railway just links
-the services automatically.
+PostgreSQL is optional when the bot runs without the admin panel. When
+`DATABASE_URL` is set, the bot connects on startup and creates its tables
+automatically. When `PANEL_PASSWORD` enables the panel, a working
+`DATABASE_URL` is required and startup fails with a clear error if it is missing
+or unreachable. This prevents the panel from silently running without its
+command store.
 
 - **PostgreSQL** — a `users` table is created automatically on first run. `/start` inserts
   a new user or refreshes `username`, `first_name`, and `last_seen` for an existing one.
   Without a database, `/start` still greets the user but nothing is persisted.
-- **Redis** — `/ping` reports whether the reply came from a 10-second cache (`fresh` vs
-  `cached`), and each echoed text message increments a per-user counter. Without Redis,
-  `/ping` replies with a plain `pong` and the counter falls back to in-memory (per-process).
 
-Connections are pooled (asyncpg) and reused across updates, then closed cleanly on shutdown.
+Connections are pooled with asyncpg, reused across updates, and closed cleanly
+on shutdown.
 
 ## Chat Menu Buttons
 
@@ -86,7 +86,6 @@ and all state-changing forms are CSRF-protected. Always use a strong
 .
 ├── bot/
 │   ├── __init__.py
-│   ├── cache.py        # Redis client and helpers
 │   ├── commands.py     # In-process registry for dynamic commands
 │   ├── config.py
 │   ├── db.py           # PostgreSQL pool and queries
@@ -119,27 +118,28 @@ and all state-changing forms are CSRF-protected. Always use a strong
 | Name           | Required | Default | Description                                        |
 | -------------- | -------- | ------- | -------------------------------------------------- |
 | `BOT_TOKEN`        | Yes | -       | Bot token from `@BotFather`                                   |
-| `DATABASE_URL`     | No  | -       | PostgreSQL connection string; omit to run without persistence. Required for the Bot Panel UI |
-| `REDIS_URL`        | No  | -       | Redis connection string; omit to run without caching          |
+| `DATABASE_URL`     | For panel | -  | PostgreSQL connection string; required when `PANEL_PASSWORD` is set |
 | `PANEL_PASSWORD`   | No  | -       | Enables the Bot Panel UI when set; password to sign in        |
 | `PANEL_USERNAME`   | No  | `admin` | Username for the Bot Panel UI                                  |
 | `PANEL_SECRET_KEY` | No  | derived | Secret for signing panel session cookies (derived from password if empty) |
 | `PORT`             | No  | `8080`  | Port the panel binds to (Railway injects this automatically)  |
 | `LOG_LEVEL`        | No  | `INFO`  | Logging level, such as `DEBUG`, `INFO`, or `ERROR`            |
 
-On Railway, add the **PostgreSQL** and **Redis** plugins to your project and reference their
-connection strings from the bot service:
+On Railway, add a **PostgreSQL** service and reference its connection string
+from the bot service:
 
 ```text
 DATABASE_URL=${{ Postgres.DATABASE_URL }}
-REDIS_URL=${{ Redis.REDIS_URL }}
 ```
 
-For local development you can run both with Docker:
+The service name in the expression is case-sensitive. If your Railway database
+service has a different name, replace `Postgres` with that exact name. After
+changing variables, redeploy the bot service.
+
+For local development you can run PostgreSQL with Docker:
 
 ```bash
-docker run -d --name pg  -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16
-docker run -d --name red -p 6379:6379 redis:7
+docker run -d --name pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16
 ```
 
 ## Install and Run Locally

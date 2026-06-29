@@ -172,7 +172,6 @@ def create_app(application, settings) -> FastAPI:
             {
                 "request": request,
                 "commands": items,
-                "db_connected": pool is not None,
                 "csrf_token": get_csrf_token(request),
             },
         )

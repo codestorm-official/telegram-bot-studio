@@ -6,17 +6,15 @@ from telegram import ReplyKeyboardMarkup, Update
 from telegram.error import Conflict, NetworkError, TimedOut
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
-from bot import cache, commands, db
+from bot import commands, db
 
 
 logger = logging.getLogger(__name__)
 
 # Keys used to read shared connections from Application.bot_data.
 DB_KEY = "db"
-REDIS_KEY = "redis"
 
-# In-memory fallback for the per-user message counter when Redis is unavailable.
-# Process-local and non-persistent, but keeps the feature working for local testing.
+# Message counts are intentionally process-local and reset after a redeploy.
 _LOCAL_MESSAGE_COUNTS: dict[int, int] = {}
 
 BOT_COMMANDS = (
@@ -93,16 +91,8 @@ async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if message is None:
         return
 
-    # Demonstrate a short-lived Redis cache: warm within the TTL, cold otherwise.
-    # Without Redis we simply reply with a plain pong.
-    client = context.bot_data.get(REDIS_KEY)
-    if client is None:
-        await message.reply_text("pong")
-        return
-
-    cached = await cache.get_or_set_ping(client)
-    source = "cached" if cached else "fresh"
-    await message.reply_text(f"pong ({source})")
+    del context
+    await message.reply_text("pong")
 
 
 async def menu_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -125,13 +115,7 @@ async def echo_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if message is None or not message.text or user is None:
         return
 
-    # Track how many messages each user has sent using a Redis counter, falling
-    # back to an in-memory counter when Redis is unavailable.
-    client = context.bot_data.get(REDIS_KEY)
-    if client is not None:
-        count = await cache.increment_message_count(client, user.id)
-    else:
-        count = _LOCAL_MESSAGE_COUNTS[user.id] = _LOCAL_MESSAGE_COUNTS.get(user.id, 0) + 1
+    count = _LOCAL_MESSAGE_COUNTS[user.id] = _LOCAL_MESSAGE_COUNTS.get(user.id, 0) + 1
     await message.reply_text(f"You sent (#{count}):\n{message.text}")
 
 
