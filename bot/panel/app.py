@@ -95,7 +95,7 @@ def _validate(
 
 
 def create_app(application, settings) -> FastAPI:
-    app = FastAPI(title="Bot Panel UI", docs_url=None, redoc_url=None)
+    app = FastAPI(title="Telegram Bot Studio", docs_url=None, redoc_url=None)
     app.state.application = application
     app.state.settings = settings
 

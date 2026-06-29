@@ -15,7 +15,7 @@ A starter Telegram bot project built with [`python-telegram-bot`](https://python
 - Error logging
 - **PostgreSQL persistence** (asyncpg): users are stored/updated on `/start`
 - Per-process message counter for echoed messages
-- **Bot Panel UI**: a password-protected web dashboard to add/edit/delete dynamic
+- **Telegram Bot Studio**: a password-protected web dashboard to add/edit/delete dynamic
   commands (text, photo/document, and reply keyboards) without redeploying
 - Configuration loaded from a local `.env` file or Railway variables
 - Ready to run with Docker and Railway
@@ -58,9 +58,9 @@ Telegram bots cannot display custom buttons before a user starts or messages the
 | `/ping`  | Check whether the bot is running |
 
 The built-in commands above always take precedence. Any other `/command` is
-resolved dynamically from commands you create in the Bot Panel UI.
+resolved dynamically from commands you create in Telegram Bot Studio.
 
-## Bot Panel UI
+## Telegram Bot Studio
 
 A lightweight web dashboard (FastAPI) runs **in the same process** as the bot —
 no extra service required. Use it to manage dynamic commands at runtime:
@@ -91,7 +91,7 @@ and all state-changing forms are CSRF-protected. Always use a strong
 │   ├── db.py           # PostgreSQL pool and queries
 │   ├── handlers.py
 │   ├── main.py
-│   └── panel/          # Bot Panel UI (FastAPI: app, auth, templates, static)
+│   └── panel/          # Telegram Bot Studio (FastAPI: app, auth, templates, static)
 │       ├── app.py
 │       ├── auth.py
 │       ├── templates/
@@ -119,8 +119,8 @@ and all state-changing forms are CSRF-protected. Always use a strong
 | -------------- | -------- | ------- | -------------------------------------------------- |
 | `BOT_TOKEN`        | Yes | -       | Bot token from `@BotFather`                                   |
 | `DATABASE_URL`     | For panel | -  | PostgreSQL connection string; required when `PANEL_PASSWORD` is set |
-| `PANEL_PASSWORD`   | No  | -       | Enables the Bot Panel UI when set; password to sign in        |
-| `PANEL_USERNAME`   | No  | `admin` | Username for the Bot Panel UI                                  |
+| `PANEL_PASSWORD`   | No  | -       | Enables Telegram Bot Studio when set; password to sign in     |
+| `PANEL_USERNAME`   | No  | `admin` | Username for Telegram Bot Studio                              |
 | `PANEL_SECRET_KEY` | No  | derived | Secret for signing panel session cookies (derived from password if empty) |
 | `PORT`             | No  | `8080`  | Port the panel binds to (Railway injects this automatically)  |
 | `LOG_LEVEL`        | No  | `INFO`  | Logging level, such as `DEBUG`, `INFO`, or `ERROR`            |

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#229ED9">
-  <title>{% block title %}Bot Studio{% endblock %}</title>
+  <title>{% block title %}Telegram Bot Studio{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
   <input class="nav-toggle" type="checkbox" id="nav-toggle">
   <header class="mobile-bar">
     <a class="brand brand-mobile" href="/">
-      <span class="brand-mark">B</span><span>Bot Studio</span>
+      <span class="brand-mark">T</span><span>Telegram Bot Studio</span>
     </a>
     <label class="menu-trigger" for="nav-toggle" aria-label="Toggle navigation">
       <span></span><span></span><span></span>
@@ -22,8 +22,8 @@
 
   <aside class="sidebar">
     <a class="brand" href="/">
-      <span class="brand-mark">B</span>
-      <span><strong>Bot Studio</strong><small>Telegram control center</small></span>
+      <span class="brand-mark">T</span>
+      <span><strong>Telegram Bot Studio</strong><small>Easily manage your bot</small></span>
     </a>
 
     <nav class="side-nav" aria-label="Main navigation">
@@ -38,7 +38,7 @@
         <span class="nav-icon">▦</span><span>Response buttons</span>
       </a>
       <a class="nav-item {% if request.url.path.startswith('/buttons') %}active{% endif %}" href="/buttons">
-        <span class="nav-icon">▤</span><span>Reply keyboard</span>
+        <span class="nav-icon">▤</span><span>Buttons</span>
       </a>
 
     </nav>

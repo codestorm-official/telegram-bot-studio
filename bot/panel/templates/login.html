@@ -3,13 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Login · Bot Panel UI</title>
+  <title>Login · Telegram Bot Studio</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <div class="login-wrap">
     <div class="card">
-      <h2 style="margin-top:0">🤖 Bot Panel UI</h2>
+      <h2 style="margin-top:0">Telegram Bot Studio</h2>
+      <p class="muted">Easily manage your bot</p>
       {% if error %}<div class="errors">{{ error }}</div>{% endif %}
       <form method="post" action="/login">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
