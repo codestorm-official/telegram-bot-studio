@@ -51,6 +51,19 @@ CREATE TABLE IF NOT EXISTS commands (
 );
 """
 
+CREATE_MENU_BUTTONS_TABLE = """
+CREATE TABLE IF NOT EXISTS menu_buttons (
+    id           SERIAL PRIMARY KEY,
+    label        TEXT NOT NULL UNIQUE,
+    command_name TEXT NOT NULL,
+    row_index    INTEGER NOT NULL DEFAULT 0 CHECK (row_index >= 0),
+    sort_order   INTEGER NOT NULL DEFAULT 0,
+    enabled      BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+"""
+
 COMMAND_COLUMNS = (
     "id, name, description, reply_type, reply_text, media_url, "
     "keyboard, enabled, show_in_menu, created_at, updated_at"
@@ -68,6 +81,7 @@ async def create_pool(dsn: str) -> asyncpg.Pool:
     async with pool.acquire() as conn:
         await conn.execute(CREATE_USERS_TABLE)
         await conn.execute(CREATE_COMMANDS_TABLE)
+        await conn.execute(CREATE_MENU_BUTTONS_TABLE)
     logger.info("PostgreSQL pool ready (schema initialized).")
     return pool
 
@@ -195,4 +209,47 @@ async def update_command(
 async def delete_command(pool: asyncpg.Pool, command_id: int) -> bool:
     result = await pool.execute("DELETE FROM commands WHERE id = $1;", command_id)
     # asyncpg returns a status string like "DELETE 1".
+    return result.endswith("1")
+
+
+# --- Main reply-keyboard buttons --------------------------------------------
+
+
+async def list_menu_buttons(
+    pool: asyncpg.Pool, *, enabled_only: bool = False
+) -> list[dict]:
+    query = "SELECT * FROM menu_buttons"
+    if enabled_only:
+        query += " WHERE enabled = TRUE"
+    query += " ORDER BY row_index, sort_order, id;"
+    return [dict(row) for row in await pool.fetch(query)]
+
+
+async def create_menu_button(
+    pool: asyncpg.Pool,
+    *,
+    label: str,
+    command_name: str,
+    row_index: int,
+    sort_order: int,
+    enabled: bool,
+) -> dict:
+    row = await pool.fetchrow(
+        """
+        INSERT INTO menu_buttons
+            (label, command_name, row_index, sort_order, enabled)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *;
+        """,
+        label,
+        command_name,
+        row_index,
+        sort_order,
+        enabled,
+    )
+    return dict(row)
+
+
+async def delete_menu_button(pool: asyncpg.Pool, button_id: int) -> bool:
+    result = await pool.execute("DELETE FROM menu_buttons WHERE id = $1;", button_id)
     return result.endswith("1")

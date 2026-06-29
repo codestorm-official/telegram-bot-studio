@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Add button · Bot Studio{% endblock %}
+{% block content %}
+  <section class="page-heading form-heading">
+    <div>
+      <a class="back-link" href="/buttons">← Back to buttons</a>
+      <h1>Add button</h1>
+      <p>Create a persistent Reply Keyboard button and connect it to a command.</p>
+    </div>
+  </section>
+
+  {% if errors %}
+  <div class="errors" role="alert"><strong>Please fix the following</strong><ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul></div>
+  {% endif %}
+
+  <form method="post" action="/buttons/new">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="editor-layout">
+      <div class="editor-main">
+        <section class="card form-section">
+          <div class="form-section-title"><span>01</span><div><h2>Button details</h2><p>Choose its label and the command it will execute.</p></div></div>
+          <div class="field-grid two">
+            <div class="field">
+              <label for="label">Button label <em>Required</em></label>
+              <input id="label" name="label" type="text" maxlength="64" value="{{ values.label }}" placeholder="View promo" required>
+              <div class="hint">This is the text users see on the button.</div>
+            </div>
+            <div class="field">
+              <label for="command_name">Command to run <em>Required</em></label>
+              <select id="command_name" name="command_name">
+                {% for command in commands %}
+                <option value="{{ command.name }}" {% if values.command_name == command.name %}selected{% endif %}>/{{ command.name }} — {{ command.description }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="card form-section">
+          <div class="form-section-title"><span>02</span><div><h2>Position & publishing</h2><p>Arrange this button in the main keyboard.</p></div></div>
+          <div class="field-grid two">
+            <div class="field">
+              <label for="row_index">Row</label>
+              <input id="row_index" name="row_index" type="number" min="0" value="{{ values.row_index }}">
+              <div class="hint">Buttons with the same row number appear side by side.</div>
+            </div>
+            <div class="field">
+              <label for="sort_order">Order</label>
+              <input id="sort_order" name="sort_order" type="number" value="{{ values.sort_order }}">
+              <div class="hint">Lower numbers appear first in the row.</div>
+            </div>
+          </div>
+          <label class="toggle-row">
+            <span><strong>Button enabled</strong><small>Show it in the keyboard after /start.</small></span>
+            <span class="switch"><input type="checkbox" name="enabled" {% if values.enabled %}checked{% endif %}><i></i></span>
+          </label>
+        </section>
+      </div>
+
+      <aside class="preview-column">
+        <div class="preview-sticky">
+          <div class="preview-label"><span>Button preview</span><small>Reply Keyboard</small></div>
+          <div class="phone-preview">
+            <div class="phone-head"><span class="avatar">B</span><div><strong>Your Bot</strong><small>bot</small></div></div>
+            <div class="chat-area">
+              <div class="chat-bubble">Choose a menu button below.<small>12:00 ✓✓</small></div>
+              <div class="preview-keyboard"><div><button id="button-preview" type="button">{{ values.label or "Your button" }}</button></div></div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+    <div class="form-actions">
+      <a class="btn btn-secondary" href="/buttons">Cancel</a>
+      <button class="btn btn-primary btn-large" type="submit">Save button →</button>
+    </div>
+  </form>
+  <script>
+    const input = document.querySelector('#label');
+    const preview = document.querySelector('#button-preview');
+    input.addEventListener('input', () => preview.textContent = input.value.trim() || 'Your button');
+  </script>
+{% endblock %}

@@ -35,13 +35,6 @@ MENU_HELP = "Help"
 MENU_ABOUT = "About"
 MENU_PING = "Ping"
 
-MAIN_MENU_KEYBOARD = ReplyKeyboardMarkup(
-    [[MENU_HELP, MENU_ABOUT], [MENU_PING]],
-    resize_keyboard=True,
-    is_persistent=True,
-    input_field_placeholder="Choose a menu item",
-)
-
 HELP_TEXT = """Available commands:
 /start - Start the bot
 /help - Show help
@@ -49,6 +42,20 @@ HELP_TEXT = """Available commands:
 /ping - Check bot status"""
 
 DYNAMIC_CALLBACK_PREFIX = "command:"
+
+
+def _main_menu_keyboard() -> ReplyKeyboardMarkup:
+    rows: list[list[str]] = [[MENU_HELP, MENU_ABOUT], [MENU_PING]]
+    custom_rows: dict[int, list[str]] = {}
+    for button in commands.reply_menu_buttons():
+        custom_rows.setdefault(button["row_index"], []).append(button["label"])
+    rows.extend(custom_rows[index] for index in sorted(custom_rows))
+    return ReplyKeyboardMarkup(
+        rows,
+        resize_keyboard=True,
+        is_persistent=True,
+        input_field_placeholder="Choose a menu item",
+    )
 
 
 def _dynamic_commands_text() -> str:
@@ -93,7 +100,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await message.reply_text(
         f"{greeting}, {name}! The bot is running.\n\n"
         "Choose a menu button below or type /help to see the available commands.",
-        reply_markup=MAIN_MENU_KEYBOARD,
+        reply_markup=_main_menu_keyboard(),
     )
     dynamic_keyboard = _dynamic_commands_keyboard()
     if dynamic_keyboard is not None:
@@ -152,6 +159,24 @@ async def echo_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     message = update.effective_message
     user = update.effective_user
     if message is None or not message.text or user is None:
+        return
+
+    target = commands.button_target(message.text.strip())
+    if target is not None:
+        if target == "help":
+            await help_command(update, context)
+        elif target == "about":
+            await about(update, context)
+        elif target == "ping":
+            await ping(update, context)
+        elif target == "start":
+            await start(update, context)
+        else:
+            command = commands.lookup(target)
+            if command is None:
+                await message.reply_text("This button's command is currently unavailable.")
+            else:
+                await commands.send(message, command)
         return
 
     count = _LOCAL_MESSAGE_COUNTS[user.id] = _LOCAL_MESSAGE_COUNTS.get(user.id, 0) + 1

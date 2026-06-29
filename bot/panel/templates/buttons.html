@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Buttons · Bot Studio{% endblock %}
+{% block content %}
+  <section class="page-heading">
+    <div>
+      <span class="eyebrow">Reply keyboard</span>
+      <h1>Buttons</h1>
+      <p>Manage persistent buttons shown below the Telegram message field.</p>
+    </div>
+    <a class="btn btn-primary btn-large" href="/buttons/new">＋ Add button</a>
+  </section>
+
+  <div class="card command-card">
+    <div class="section-heading">
+      <div><span class="eyebrow">Main menu</span><h2>Custom buttons</h2></div>
+    </div>
+    {% if buttons %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Label</th><th>Runs command</th><th>Row</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+        {% for button in buttons %}
+          <tr>
+            <td data-label="Label"><strong>{{ button.label }}</strong></td>
+            <td data-label="Command"><span class="type-pill">/{{ button.command_name }}</span></td>
+            <td data-label="Row">{{ button.row_index + 1 }}</td>
+            <td data-label="Status">{% if button.enabled %}<span class="badge on"><i></i>Active</span>{% else %}<span class="badge off">Disabled</span>{% endif %}</td>
+            <td class="action-cell">
+              <form class="inline" method="post" action="/buttons/{{ button.id }}/delete" onsubmit="return confirm('Delete button {{ button.label }}?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="icon-btn danger" type="submit" aria-label="Delete {{ button.label }}">⌫</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <span>▤</span><h3>No custom buttons yet</h3>
+      <p>Help, About, and Ping remain available as built-in buttons.</p>
+      <a class="btn btn-primary" href="/buttons/new">Add first button</a>
+    </div>
+    {% endif %}
+  </div>
+{% endblock %}

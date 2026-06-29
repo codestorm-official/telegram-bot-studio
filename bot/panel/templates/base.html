@@ -42,8 +42,11 @@
       <a class="nav-item" href="/#menu-buttons">
         <span class="nav-icon">▦</span><span>Inline menu</span>
       </a>
-      <a class="nav-item" href="/commands/new#response-buttons">
-        <span class="nav-icon">↳</span><span>Response buttons</span>
+      <a class="nav-item {% if request.url.path == '/buttons' %}active{% endif %}" href="/buttons">
+        <span class="nav-icon">▤</span><span>Buttons</span>
+      </a>
+      <a class="nav-item {% if request.url.path == '/buttons/new' %}active{% endif %}" href="/buttons/new">
+        <span class="nav-icon">＋</span><span>Add button</span>
       </a>
     </nav>
 

@@ -33,6 +33,7 @@ _BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(_BASE_DIR / "templates"))
 
 NAME_RE = re.compile(r"^[a-z0-9_]{1,32}$")
+BUILTIN_COMMANDS = ("start", "help", "about", "ping")
 
 
 def _get_pool(request: Request):
@@ -167,6 +168,7 @@ def create_app(application, settings) -> FastAPI:
     async def index(request: Request):
         pool = _get_pool(request)
         items = await db.list_commands(pool) if pool is not None else []
+        button_items = await db.list_menu_buttons(pool) if pool is not None else []
         return templates.TemplateResponse(
             "list.html",
             {
@@ -178,7 +180,7 @@ def create_app(application, settings) -> FastAPI:
                     "in_menu": sum(
                         bool(item["enabled"] and item["show_in_menu"]) for item in items
                     ),
-                    "with_buttons": sum(bool(item["keyboard"]) for item in items),
+                    "buttons": len(button_items),
                 },
                 "csrf_token": get_csrf_token(request),
             },
@@ -258,6 +260,115 @@ def create_app(application, settings) -> FastAPI:
             await db.delete_command(pool, command_id)
             await _refresh(request)
         return RedirectResponse("/", status_code=303)
+
+    @app.get("/buttons", response_class=HTMLResponse, dependencies=[Depends(login_required)])
+    async def buttons_index(request: Request):
+        pool = _get_pool(request)
+        items = await db.list_menu_buttons(pool) if pool is not None else []
+        return templates.TemplateResponse(
+            "buttons.html",
+            {
+                "request": request,
+                "buttons": items,
+                "csrf_token": get_csrf_token(request),
+            },
+        )
+
+    @app.get(
+        "/buttons/new",
+        response_class=HTMLResponse,
+        dependencies=[Depends(login_required)],
+    )
+    async def button_new_form(request: Request):
+        return await _render_button_form(request, {}, [])
+
+    @app.post(
+        "/buttons/new",
+        response_class=HTMLResponse,
+        dependencies=[Depends(login_required)],
+    )
+    async def button_new_submit(request: Request):
+        form = dict(await request.form())
+        verify_csrf(request, form.get("csrf_token"))
+        label = (form.get("label") or "").strip()
+        command_name = (form.get("command_name") or "").strip().lstrip("/").lower()
+        try:
+            row_index = max(0, int(form.get("row_index") or 0))
+            sort_order = int(form.get("sort_order") or 0)
+        except ValueError:
+            row_index, sort_order = 0, 0
+        values = {
+            "label": label,
+            "command_name": command_name,
+            "row_index": row_index,
+            "sort_order": sort_order,
+            "enabled": form.get("enabled") == "on",
+        }
+        errors = []
+        if not label or len(label) > 64:
+            errors.append("Button label must be between 1 and 64 characters.")
+
+        pool = _get_pool(request)
+        command_rows = await db.list_commands(pool, enabled_only=True)
+        valid_commands = set(BUILTIN_COMMANDS) | {item["name"] for item in command_rows}
+        if command_name not in valid_commands:
+            errors.append("Choose an available command for this button.")
+        existing = await db.list_menu_buttons(pool)
+        if any(item["label"].casefold() == label.casefold() for item in existing):
+            errors.append("A button with this label already exists.")
+        if label.casefold() in {"help", "about", "ping"}:
+            errors.append("This label is already used by a built-in button.")
+        if errors:
+            return await _render_button_form(request, values, errors)
+
+        await db.create_menu_button(pool, **values)
+        await _refresh(request)
+        return RedirectResponse("/buttons", status_code=303)
+
+    @app.post(
+        "/buttons/{button_id}/delete", dependencies=[Depends(login_required)]
+    )
+    async def button_delete(
+        request: Request, button_id: int, csrf_token: str = Form("")
+    ):
+        verify_csrf(request, csrf_token)
+        pool = _get_pool(request)
+        await db.delete_menu_button(pool, button_id)
+        await _refresh(request)
+        return RedirectResponse("/buttons", status_code=303)
+
+    async def _render_button_form(request, values, errors):
+        pool = _get_pool(request)
+        command_rows = await db.list_commands(pool, enabled_only=True)
+        available_commands = [
+            {"name": name, "description": f"Built-in /{name}"}
+            for name in BUILTIN_COMMANDS
+        ] + [
+            {
+                "name": item["name"],
+                "description": item["description"] or f"/{item['name']}",
+            }
+            for item in command_rows
+        ]
+        defaults = {
+            "label": "",
+            "command_name": "help",
+            "row_index": 0,
+            "sort_order": 0,
+            "enabled": True,
+        }
+        defaults.update(values)
+        return templates.TemplateResponse(
+            "button_form.html",
+            {
+                "request": request,
+                "csrf_token": get_csrf_token(request),
+                "values": defaults,
+                "commands": available_commands,
+                "errors": errors,
+            },
+            status_code=400 if errors else 200,
+        )
 
     def _render_form(request, action, title, values, errors):
         return templates.TemplateResponse(

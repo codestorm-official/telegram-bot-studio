@@ -23,17 +23,24 @@ RESERVED_NAMES = frozenset({"start", "help", "about", "ping"})
 
 # name -> command dict (enabled commands only).
 _REGISTRY: dict[str, dict] = {}
+_MENU_BUTTONS: list[dict] = []
 
 
 async def reload(pool) -> None:
     """Reload the enabled commands from Postgres into the in-process registry."""
-    global _REGISTRY
+    global _REGISTRY, _MENU_BUTTONS
     if pool is None:
         _REGISTRY = {}
+        _MENU_BUTTONS = []
         return
-    commands = await db.list_commands(pool, enabled_only=True)
-    _REGISTRY = {cmd["name"]: cmd for cmd in commands}
-    logger.info("Loaded %d dynamic command(s).", len(_REGISTRY))
+    command_rows = await db.list_commands(pool, enabled_only=True)
+    _REGISTRY = {cmd["name"]: cmd for cmd in command_rows}
+    _MENU_BUTTONS = await db.list_menu_buttons(pool, enabled_only=True)
+    logger.info(
+        "Loaded %d dynamic command(s) and %d menu button(s).",
+        len(_REGISTRY),
+        len(_MENU_BUTTONS),
+    )
 
 
 def lookup(name: str) -> dict | None:
@@ -48,6 +55,20 @@ def menu_commands() -> list[tuple[str, str]]:
         for cmd in sorted(_REGISTRY.values(), key=lambda c: c["name"])
         if cmd.get("show_in_menu")
     ]
+
+
+def reply_menu_buttons() -> list[dict]:
+    """Return enabled custom buttons in their configured display order."""
+    return list(_MENU_BUTTONS)
+
+
+def button_target(label: str) -> str | None:
+    """Resolve a custom reply-button label to its command name."""
+    folded = label.casefold()
+    for button in _MENU_BUTTONS:
+        if button["label"].casefold() == folded:
+            return button["command_name"]
+    return None
 
 
 def _build_keyboard(keyboard: list | None) -> ReplyKeyboardMarkup | None:
